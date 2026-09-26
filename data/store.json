@@ -1,0 +1,139 @@
+{
+  "products": [
+    {
+      "id": "prod-01",
+      "name": "\u00c9couteurs Sans Fil Buds Pulse Pro",
+      "slug": "ecouteurs-sans-fil-buds-pulse-pro",
+      "category": "electronique",
+      "categoryLabel": "\u00c9lectronique",
+      "price": 25000,
+      "oldPrice": 35000,
+      "stock": 14,
+      "featured": true,
+      "isPopular": true,
+      "status": "published",
+      "image": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80",
+      "gallery": [
+        "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80"
+      ],
+      "description": "Son haute d\u00e9finition immersif avec r\u00e9duction active du bruit ambiant. Autonomie de 32 heures avec bo\u00eetier.",
+      "specs": [
+        {
+          "label": "Autonomie",
+          "value": "32h avec bo\u00eetier"
+        },
+        {
+          "label": "R\u00e9duction",
+          "value": "Active ANC 35dB"
+        }
+      ],
+      "rating": 4.9,
+      "reviewsCount": 38,
+      "createdAt": "2026-09-10"
+    },
+    {
+      "id": "prod-02",
+      "name": "Montre Connect\u00e9e Watch Pro X",
+      "slug": "montre-connectee-watch-pro-x",
+      "category": "electronique",
+      "categoryLabel": "\u00c9lectronique",
+      "price": 45000,
+      "oldPrice": 60000,
+      "stock": 9,
+      "featured": true,
+      "isPopular": true,
+      "status": "published",
+      "image": "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=800&q=80",
+      "gallery": [
+        "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=800&q=80"
+      ],
+      "description": "\u00c9cran AMOLED 1.95 pouces Ultra Lumineux, suivi cardiaque 24/7, plus de 100 modes sportifs et appels Bluetooth.",
+      "specs": [
+        {
+          "label": "\u00c9cran",
+          "value": "1.95 AMOLED HD"
+        },
+        {
+          "label": "Autonomie",
+          "value": "7 \u00e0 10 jours"
+        }
+      ],
+      "rating": 4.8,
+      "reviewsCount": 52,
+      "createdAt": "2026-09-12"
+    },
+    {
+      "id": "prod-03",
+      "name": "Smartphone Nova Ultra 5G (Bleu Azur)",
+      "slug": "smartphone-nova-ultra-5g",
+      "category": "nouveautes",
+      "categoryLabel": "Nouveaut\u00e9s",
+      "price": 185000,
+      "oldPrice": 220000,
+      "stock": 5,
+      "featured": true,
+      "isNew": true,
+      "status": "published",
+      "image": "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=800&q=80",
+      "gallery": [
+        "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=800&q=80"
+      ],
+      "description": "Capteur photo 108 MP avec IA, processeur ultra fluide, 256 Go de stockage et recharge 67W Turbo Charge.",
+      "specs": [
+        {
+          "label": "Stockage",
+          "value": "256 Go ROM + 8 Go RAM"
+        },
+        {
+          "label": "Batterie",
+          "value": "5000 mAh"
+        }
+      ],
+      "rating": 5.0,
+      "reviewsCount": 24,
+      "createdAt": "2026-09-15"
+    }
+  ],
+  "orders": [
+    {
+      "id": "PS-1024",
+      "customer": {
+        "fullName": "Amina Dossou",
+        "phone": "+229 97 12 34 56",
+        "city": "Cotonou",
+        "address": "Haie Vive, Rue 310, Immeuble Horizon"
+      },
+      "items": [
+        {
+          "productId": "prod-01",
+          "name": "\u00c9couteurs Sans Fil Buds Pulse Pro",
+          "price": 25000,
+          "quantity": 1,
+          "image": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80"
+        }
+      ],
+      "subtotal": 25000,
+      "deliveryFee": 1500,
+      "discount": 0,
+      "total": 26500,
+      "paymentMethod": "cod",
+      "paymentMethodLabel": "Paiement \u00e0 la livraison",
+      "status": "En pr\u00e9paration",
+      "createdAt": "2026-09-22 14:32",
+      "updatedAt": "2026-09-22 15:10"
+    }
+  ],
+  "settings": {
+    "storeName": "Prime Shop",
+    "tagline": "Tout ce qu\u2019il vous faut. Au m\u00eame endroit.",
+    "currency": "FCFA",
+    "deliveryFee": 1500,
+    "freeDeliveryThreshold": 35000,
+    "whatsappNumber": "22997000000",
+    "facebookPixelId": "109823471829381",
+    "facebookPixelEnabled": true,
+    "adminPin": "admin123",
+    "bannerNotice": "\u26a1 Livraison express offerte \u00e0 partir de 35 000 FCFA ! Paiement s\u00e9curis\u00e9 \u00e0 la livraison.",
+    "bannerEnabled": true
+  }
+}

@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* White Marble & Mist Glass Panels */
+  .marble-panel {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 1px 3px 0 rgba(0, 0, 0, 0.02);
+  }
+
+  .marble-card {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 4px 12px -2px rgba(0, 0, 0, 0.02);
+    border-radius: 28px;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .marble-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px -15px rgba(84, 51, 235, 0.12), 0 6px 18px -3px rgba(0, 0, 0, 0.04);
+    border-color: rgba(84, 51, 235, 0.2);
+  }
+
+  .pillow-card {
+    background: #ffffff;
+    border-radius: 28px;
+    border: 1px solid rgba(84, 51, 235, 0.08);
+    box-shadow: 0 20px 45px -10px rgba(84, 51, 235, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03);
+  }
+
+  .pill-chip {
+    border-radius: 9999px;
+  }
+
+  .violet-glow {
+    box-shadow: 0 8px 25px -4px rgba(84, 51, 235, 0.35);
+  }
+
+  .violet-glow-subtle {
+    box-shadow: 0 12px 32px -8px rgba(84, 51, 235, 0.16);
+  }
+}
+
+/* Lenis Smooth Scroll Configuration */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
+}
+
+/* Infinite Marquee Animation */
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 35s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Subtle organic floating animation for 3D tactile centerpiece */
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.4deg);
+  }
+}
+
+.animate-float-gentle {
+  animation: float-gentle 5s ease-in-out infinite;
+}
+
+/* Pulse heart animation */
+@keyframes pulse-heart {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.animate-pulse-heart {
+  animation: pulse-heart 3s ease-in-out infinite;
+}
+
+/* Slide Up and Float Up Animations */
+@keyframes slideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-80px) scale(1.4);
+  }
+}
+
+.animate-floatUp {
+  animation: floatUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

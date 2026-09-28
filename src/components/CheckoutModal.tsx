@@ -136,6 +136,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       .map((i) => `• ${i.quantity}x ${i.name} (${formatPrice(i.price * i.quantity, settings.currency)})`)
       .join('\n');
 
+    const trackingUrl = `${window.location.origin}/#/suivi?id=${order.id}`;
+
     const msg = encodeURIComponent(
       `Bonjour Prime Shop !\n` +
       `Je viens de valider ma commande *#${order.id}* :\n\n` +
@@ -145,6 +147,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       `📦 *Articles :*\n${itemsList}\n\n` +
       `💵 *Total :* ${formatPrice(order.total, settings.currency)}\n` +
       `💳 *Mode :* ${order.paymentMethodLabel}\n\n` +
+      `🔗 *Lien de suivi en direct :* ${trackingUrl}\n\n` +
       `Pouvez-vous me confirmer le passage du coursier ? Merci !`
     );
 
@@ -216,6 +219,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               >
                 <PhoneCall className="w-5 h-5" />
                 <span>CONFIRMER SUR WHATSAPP</span>
+              </a>
+
+              <a
+                href={`#/suivi?id=${completedOrder.id}`}
+                onClick={onClose}
+                className="w-full py-3 px-6 rounded-full bg-[#ece7ff] hover:bg-[#ded6ff] text-[#5433eb] font-bold text-xs flex items-center justify-center gap-2 transition"
+              >
+                <Truck className="w-4 h-4 text-[#5433eb]" />
+                <span>Suivre mon colis en direct (#{completedOrder.id})</span>
               </a>
 
               <button

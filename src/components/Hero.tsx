@@ -9,12 +9,12 @@ import {
   Flame, 
   MessageCircle, 
   Heart,
-  ExternalLink,
   ShoppingBag,
   Volume2,
   VolumeX,
   Smile
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { StoreSettings } from '../types';
 import { PrimeWordmark } from './Logo';
 import { soundFX } from '../utils/audio';
@@ -63,7 +63,7 @@ export const Hero: React.FC<HeroProps> = ({
     const rect = heroRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setTilt({ x: x * 10, y: -y * 8 });
+    setTilt({ x: x * 8, y: -y * 6 });
   };
 
   const handleMouseLeave = () => {
@@ -77,7 +77,6 @@ export const Hero: React.FC<HeroProps> = ({
     setLikesCount(prev => prev + 1);
     setHasLiked(true);
 
-    // Spawn floating heart particle
     const newHeart = { id: Date.now(), x: Math.random() * 40 - 20 };
     setHeartsList(prev => [...prev, newHeart]);
     setTimeout(() => {
@@ -101,14 +100,14 @@ export const Hero: React.FC<HeroProps> = ({
       ref={heroRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative w-full min-h-[92vh] flex flex-col justify-between overflow-hidden bg-gradient-to-b from-[#f5f2fc] via-[#f0effa] to-[#f2f4f5] pt-6 pb-4 sm:pb-8 border-b border-slate-200/60"
+      className="relative w-full overflow-hidden bg-gradient-to-b from-[#f5f2fc] via-[#f0effa] to-[#f2f4f5] pt-4 sm:pt-6 pb-4 border-b border-slate-200/60"
     >
       
       {/* Subtle Ambient Radial Light behind the 3D Character */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-gradient-to-tr from-[#5433eb]/10 via-[#a78bfa]/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-[#5433eb]/10 via-[#a78bfa]/15 to-transparent rounded-full blur-3xl pointer-events-none" />
 
       {/* Floating Sound Toggle Pill */}
-      <div className="absolute top-4 right-4 z-20 hidden md:block">
+      <div className="absolute top-3 right-4 z-20 hidden md:block">
         <button
           onClick={toggleSound}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-slate-200 text-xs font-bold text-slate-600 hover:text-[#5433eb] shadow-xs transition cursor-pointer"
@@ -122,27 +121,29 @@ export const Hero: React.FC<HeroProps> = ({
       {/* ------------------------------------------------------------- */}
       {/* DESKTOP & TABLET EDITORIAL THREE-COLUMN LAYOUT (Screen Profile >= lg) */}
       {/* ------------------------------------------------------------- */}
-      <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 hidden lg:grid grid-cols-12 gap-6 items-start">
+      <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 hidden lg:grid grid-cols-12 gap-6 items-start">
         
         {/* LEFT COLUMN: Editorial Headline & Nav Links */}
-        <div className="col-span-4 flex flex-col items-start text-left space-y-4 pt-2">
-          {/* Eyebrow */}
+        <motion.div 
+          initial={{ opacity: 0, x: -25 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="col-span-4 flex flex-col items-start text-left space-y-3 pt-1"
+        >
           <span className="text-xs font-semibold tracking-wider text-slate-500 lowercase font-mono">
             have a fresh idea?
           </span>
 
-          {/* Headline */}
           <h1 className="text-3xl xl:text-4xl font-extrabold text-[#050508] tracking-tight leading-[1.15]">
             imagination <br />
             <span className="text-[#5433eb]">meets craft</span>
           </h1>
 
-          <p className="text-xs text-slate-600 font-medium max-w-xs leading-relaxed pt-1">
-            Découvrez une sélection exclusive pensée avec passion : smartphones, montres, audio & gadgets indispensables du quotidien au Bénin.
+          <p className="text-xs text-slate-600 font-medium max-w-xs leading-relaxed">
+            Découvrez une sélection exclusive pensée avec passion : smartphones, montres, audio & lifestyle au Bénin.
           </p>
 
-          {/* Vertical Editorial Links */}
-          <nav className="flex flex-col space-y-2.5 pt-4">
+          <nav className="flex flex-col space-y-2 pt-2">
             <button
               onClick={() => {
                 soundFX.playPop();
@@ -186,56 +187,63 @@ export const Hero: React.FC<HeroProps> = ({
               <span>Say hey sur WhatsApp</span>
             </a>
           </nav>
-        </div>
+        </motion.div>
 
         {/* CENTER COLUMN: Top Brand Wordmark */}
-        <div className="col-span-4 flex flex-col items-center justify-start pt-1">
-          <PrimeWordmark />
-          <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-slate-200/80 shadow-xs text-[11px] font-bold text-slate-700">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="col-span-4 flex flex-col items-center justify-start"
+        >
+          <PrimeWordmark className="h-9 sm:h-11" />
+          <div className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/80 border border-slate-200/80 shadow-xs text-[11px] font-bold text-slate-700">
             <Sparkles className="w-3 h-3 text-[#5433eb]" />
-            <span>Store Officiel • Cotonou, Calavi & Tout le Bénin</span>
+            <span>Store Officiel • Cotonou, Calavi & Bénin</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* RIGHT COLUMN: Say Hey, Team Up Headline, Asterisk & Socials */}
-        <div className="col-span-4 flex flex-col items-start text-left space-y-3 pt-2 pl-4">
-          {/* Eyebrow */}
+        <motion.div 
+          initial={{ opacity: 0, x: 25 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="col-span-4 flex flex-col items-start text-left space-y-2.5 pt-1 pl-4"
+        >
           <span className="text-xs font-semibold tracking-wider text-slate-500 lowercase font-mono">
             say hey
           </span>
 
-          {/* Headline */}
           <h2 className="text-2xl xl:text-3xl font-extrabold text-[#050508] tracking-tight leading-tight">
             let’s team up! <br />
             <span>bring us your idea*</span>
           </h2>
 
-          {/* Asterisk note */}
           <p className="text-[11px] text-slate-500 leading-snug font-medium max-w-xs">
-            *livraison express sous 24h à Cotonou, Calavi et environs. Règlement sécurisé en cash ou Mobile Money à la réception.
+            *livraison express 24h à Cotonou, Calavi et tout le Bénin. Règlement à la réception.
           </p>
 
           {/* Social Channels Row */}
-          <div className="flex items-center gap-3 pt-3">
+          <div className="flex items-center gap-2.5 pt-1">
             <a
               href={whatsappHeroUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => soundFX.playPop()}
               aria-label="WhatsApp Prime Shop"
-              className="w-9 h-9 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-700 hover:text-emerald-600 hover:border-emerald-300 hover:scale-110 transition-all cursor-pointer"
+              className="w-8 h-8 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-700 hover:text-emerald-600 hover:border-emerald-300 hover:scale-110 transition-all cursor-pointer"
             >
-              <MessageCircle className="w-4 h-4" />
+              <MessageCircle className="w-3.5 h-3.5" />
             </a>
 
             <a
-              href={`https://instagram.com/${(settings.instagramHandle || 'primeshop').replace('@', '')}`}
+              href={`https://instagram.com/${(settings.instagramHandle || 'primeshop.bj').replace('@', '')}`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram Prime Shop"
-              className="w-9 h-9 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-700 hover:text-pink-600 hover:border-pink-300 hover:scale-110 transition-all cursor-pointer"
+              className="w-8 h-8 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-700 hover:text-pink-600 hover:border-pink-300 hover:scale-110 transition-all cursor-pointer"
             >
-              <svg className="w-4 h-4 fill-none stroke-current" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 fill-none stroke-current" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                 <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                 <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
@@ -243,13 +251,13 @@ export const Hero: React.FC<HeroProps> = ({
             </a>
 
             <a
-              href={`https://tiktok.com/@${(settings.tiktokHandle || 'primeshop').replace('@', '')}`}
+              href={`https://tiktok.com/@${(settings.tiktokHandle || 'primeshop.bj').replace('@', '')}`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="TikTok Prime Shop"
-              className="w-9 h-9 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-700 hover:text-black hover:border-slate-400 hover:scale-110 transition-all cursor-pointer"
+              className="w-8 h-8 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-700 hover:text-black hover:border-slate-400 hover:scale-110 transition-all cursor-pointer"
             >
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                 <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.86.12V9.42a6.34 6.34 0 0 0-.86-.06 6.34 6.34 0 1 0 6.34 6.34V8.71a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.14z"/>
               </svg>
             </a>
@@ -257,57 +265,57 @@ export const Hero: React.FC<HeroProps> = ({
             <a
               href={`tel:${settings.whatsappNumber}`}
               aria-label="Appeler Prime Shop"
-              className="w-9 h-9 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-700 hover:text-[#5433eb] hover:border-[#5433eb]/40 hover:scale-110 transition-all cursor-pointer"
+              className="w-8 h-8 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-700 hover:text-[#5433eb] hover:border-[#5433eb]/40 hover:scale-110 transition-all cursor-pointer"
             >
-              <PhoneCall className="w-4 h-4" />
+              <PhoneCall className="w-3.5 h-3.5" />
             </a>
           </div>
 
-          {/* Quick WhatsApp Action Button */}
-          <div className="pt-2">
+          <div>
             <a
               href={whatsappHeroUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => soundFX.playPop()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#5433eb] hover:bg-[#4323d8] text-white text-xs font-bold shadow-md shadow-[#5433eb]/25 hover:scale-105 active:scale-95 transition-all"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#5433eb] hover:bg-[#4323d8] text-white text-xs font-bold shadow-md shadow-[#5433eb]/25 hover:scale-105 active:scale-95 transition-all"
             >
-              <PhoneCall className="w-3.5 h-3.5" />
+              <PhoneCall className="w-3 h-3" />
               <span>Commander en 1 Clic</span>
             </a>
           </div>
-        </div>
+        </motion.div>
 
       </div>
 
       {/* ------------------------------------------------------------- */}
       {/* MOBILE HEADER & INTRO (Screen Profile < lg) */}
       {/* ------------------------------------------------------------- */}
-      <div className="lg:hidden relative z-10 px-4 text-center flex flex-col items-center pt-2 space-y-3">
-        <PrimeWordmark className="h-9" />
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="lg:hidden relative z-10 px-4 text-center flex flex-col items-center space-y-2"
+      >
+        <PrimeWordmark className="h-8" />
         
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-slate-200/80 shadow-xs text-xs font-bold text-slate-700">
-          <Sparkles className="w-3.5 h-3.5 text-[#5433eb]" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/80 border border-slate-200/80 shadow-xs text-[11px] font-bold text-slate-700">
+          <Sparkles className="w-3 h-3 text-[#5433eb]" />
           <span>Imagination meets craft • Prime Shop</span>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#050508] tracking-tight leading-tight">
+        <h1 className="text-xl sm:text-2xl font-black text-[#050508] tracking-tight leading-tight">
           Tout ce qu'il vous faut.{' '}
           <span className="text-[#5433eb]">Au même endroit.</span>
         </h1>
 
-        <p className="text-xs text-slate-600 font-medium max-w-sm">
-          Électronique de pointe, accessoires tendance et service client WhatsApp 7j/7 avec paiement à la livraison au Bénin.
-        </p>
-
         {/* Mobile Quick Action Pills */}
-        <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+        <div className="flex items-center justify-center gap-2 pt-0.5 flex-wrap">
           <button
             onClick={() => {
               soundFX.playPop();
               onDiscoverClick();
             }}
-            className="px-4 py-2 rounded-full bg-[#5433eb] text-white text-xs font-bold shadow-md shadow-[#5433eb]/20 active:scale-95 transition cursor-pointer"
+            className="px-3.5 py-1.5 rounded-full bg-[#5433eb] text-white text-xs font-bold shadow-md shadow-[#5433eb]/20 active:scale-95 transition cursor-pointer"
           >
             Boutique
           </button>
@@ -316,7 +324,7 @@ export const Hero: React.FC<HeroProps> = ({
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => soundFX.playPop()}
-            className="px-4 py-2 rounded-full bg-emerald-600 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 active:scale-95 transition"
+            className="px-3.5 py-1.5 rounded-full bg-emerald-600 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 active:scale-95 transition"
           >
             <PhoneCall className="w-3 h-3" />
             WhatsApp
@@ -326,64 +334,73 @@ export const Hero: React.FC<HeroProps> = ({
               soundFX.playPop();
               onNewArrivalsClick();
             }}
-            className="px-4 py-2 rounded-full bg-white text-slate-700 border border-slate-200 text-xs font-bold active:scale-95 transition cursor-pointer"
+            className="px-3 py-1.5 rounded-full bg-white text-slate-700 border border-slate-200 text-xs font-bold active:scale-95 transition cursor-pointer"
           >
             Nouveautés 🔥
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* ------------------------------------------------------------- */}
-      {/* CENTERPIECE: TACTILE 3D CHARACTER (Visible on both PC & Mobile) */}
+      {/* CENTERPIECE: TACTILE 3D CHARACTER (TIGHT FRAMING, ZERO DEAD GAP) */}
       {/* ------------------------------------------------------------- */}
-      <div className="relative z-10 w-full flex flex-col items-center justify-end mt-4 sm:mt-6">
+      <div className="relative z-10 w-full flex flex-col items-center justify-center mt-1 sm:mt-2">
         
         {/* Interactive Speech Bubble */}
-        {showBubble && (
-          <div className="mb-3 px-4 py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-[#5433eb]/30 shadow-xl shadow-[#5433eb]/10 max-w-sm text-center animate-slideUp relative">
-            <p className="text-xs font-bold text-[#050508] leading-snug">
-              {MASCOT_QUOTES[currentQuoteIndex]}
-            </p>
-            <div className="text-[10px] text-[#5433eb] mt-1 font-semibold flex items-center justify-center gap-1">
-              <Smile className="w-3 h-3" /> Cliquez sur la mascotte pour un autre conseil !
-            </div>
-            {/* Arrow triangle pointing down */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-white" />
-          </div>
-        )}
+        <AnimatePresence>
+          {showBubble && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="mb-2 px-3.5 py-1.5 rounded-2xl bg-white/95 backdrop-blur-md border border-[#5433eb]/30 shadow-xl shadow-[#5433eb]/10 max-w-xs sm:max-w-sm text-center relative z-20"
+            >
+              <p className="text-[11px] sm:text-xs font-bold text-[#050508] leading-snug">
+                {MASCOT_QUOTES[currentQuoteIndex]}
+              </p>
+              <div className="text-[10px] text-[#5433eb] mt-0.5 font-semibold flex items-center justify-center gap-1">
+                <Smile className="w-3 h-3" /> Cliquez pour un autre conseil !
+              </div>
+              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-6 border-l-transparent border-r-6 border-r-transparent border-t-6 border-t-white" />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Character Frame with Subtle Mouse Tilt */}
-        <div 
-          className="relative max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl w-full flex justify-center items-end"
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="relative max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl w-full flex justify-center items-end"
           onMouseEnter={() => setCharacterHovered(true)}
           onMouseLeave={() => setCharacterHovered(false)}
           style={{
             transform: `perspective(1000px) rotateY(${tilt.x}deg) rotateX(${tilt.y}deg)`,
-            transition: 'transform 0.15s ease-out',
+            transition: 'transform 0.12s ease-out',
           }}
         >
-          {/* Main Pristine Tactile 3D Image */}
-          <div className="relative w-full aspect-[4/3] sm:aspect-[16/11] max-h-[52vh] flex items-end justify-center">
+          {/* Main Pristine Tactile 3D Image (COMPACT HEIGHT - NO OVERFLOW GAP) */}
+          <div className="relative w-full h-[220px] sm:h-[280px] md:h-[320px] lg:h-[350px] flex items-end justify-center">
             <picture className="w-full h-full flex items-end justify-center">
               <source srcSet="/hero-character-clean.webp" type="image/webp" />
               <img
                 src="/hero-character-clean.png"
-                alt="Prime Shop Tactile Mascot - Douceur, Passion et Confiance"
-                className="w-full h-full object-contain object-bottom animate-float-gentle drop-shadow-2xl transition-transform duration-500 select-none pointer-events-auto cursor-pointer"
+                alt="Prime Shop Tactile Mascot"
+                className="w-auto h-full object-contain object-bottom animate-float-gentle drop-shadow-xl transition-transform duration-300 select-none pointer-events-auto cursor-pointer"
                 onClick={handleMascotClick}
                 loading="eager"
               />
             </picture>
 
-            {/* Simulated Black Cursor Arrow with interactive tooltip */}
+            {/* Reference Screenshot Black Cursor Arrow */}
             <div 
-              className={`absolute top-[42%] left-[34%] transform -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 hidden sm:block ${
-                characterHovered ? 'scale-110 -translate-y-6' : ''
+              className={`absolute top-[40%] left-[34%] transform -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 hidden sm:block ${
+                characterHovered ? 'scale-110 -translate-y-4' : ''
               }`}
             >
               <div className="relative flex items-start">
                 <svg 
-                  className="w-9 h-9 text-black drop-shadow-lg filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]" 
+                  className="w-8 h-8 text-black drop-shadow-lg filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]" 
                   viewBox="0 0 24 24" 
                   fill="currentColor" 
                   stroke="white" 
@@ -392,21 +409,20 @@ export const Hero: React.FC<HeroProps> = ({
                   <path d="M4 2v17.2l4.8-4.8 3.5 8.1 3.5-1.5-3.5-8.1 6.5.1L4 2z" />
                 </svg>
 
-                {/* Micro tooltip pill on hover */}
-                <div className="ml-2 mt-2 px-3 py-1 rounded-full bg-[#050508] text-white text-[11px] font-bold shadow-xl border border-white/20 whitespace-nowrap animate-fadeIn">
-                  Cliquez-moi pour un conseil ✨
+                <div className="ml-1.5 mt-1 px-2.5 py-0.5 rounded-full bg-[#050508] text-white text-[10px] font-bold shadow-xl border border-white/20 whitespace-nowrap">
+                  Cliquez-moi ✨
                 </div>
               </div>
             </div>
 
-            {/* Interactive Heart Counter Badge with Particle Emitter */}
+            {/* Interactive Heart Counter Badge */}
             <button
               onClick={handleHeartClick}
-              className="absolute bottom-6 right-6 sm:right-12 px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-lg shadow-black/5 hover:scale-108 active:scale-95 transition flex items-center gap-2 cursor-pointer z-20 group"
-              title="Envoyer un coup de cœur à Prime Shop"
+              className="absolute bottom-2 right-4 sm:right-8 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-md hover:scale-108 active:scale-95 transition flex items-center gap-1.5 cursor-pointer z-20 group"
+              title="Coup de cœur pour Prime Shop"
             >
               <Heart 
-                className={`w-4 h-4 transition-colors ${
+                className={`w-3.5 h-3.5 transition-colors ${
                   hasLiked ? 'text-rose-500 fill-rose-500 animate-pulse' : 'text-slate-400 group-hover:text-rose-500'
                 }`} 
               />
@@ -419,7 +435,7 @@ export const Hero: React.FC<HeroProps> = ({
             {heartsList.map(h => (
               <div
                 key={h.id}
-                className="absolute bottom-12 right-10 pointer-events-none animate-floatUp text-rose-500 text-lg"
+                className="absolute bottom-8 right-6 pointer-events-none animate-floatUp text-rose-500 text-base"
                 style={{ transform: `translateX(${h.x}px)` }}
               >
                 ❤️
@@ -427,29 +443,29 @@ export const Hero: React.FC<HeroProps> = ({
             ))}
           </div>
 
-        </div>
+        </motion.div>
 
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* BOTTOM REASSURANCE STRIP (Clean White Marble & Shop Violet) */}
+      {/* COMPACT REASSURANCE STRIP (FLUID INTEGRATION RIGHT UNDER MASCOT) */}
       {/* ------------------------------------------------------------- */}
-      <div className="relative z-10 max-w-5xl mx-auto w-full px-4 pt-2">
-        <div className="rounded-[28px] bg-white/90 backdrop-blur-md border border-slate-200/80 p-3 sm:p-4 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-700">
-            <Truck className="w-4 h-4 text-[#5433eb] shrink-0" />
+      <div className="relative z-10 max-w-5xl mx-auto w-full px-4 pt-1 sm:pt-2">
+        <div className="rounded-[22px] bg-white/95 backdrop-blur-md border border-slate-200/80 p-2.5 sm:p-3 shadow-xs grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+          <div className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs font-bold text-slate-700">
+            <Truck className="w-3.5 h-3.5 text-[#5433eb] shrink-0" />
             <span>Livraison 24h Bénin</span>
           </div>
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-700">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs font-bold text-slate-700">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>Paiement à Réception</span>
           </div>
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-700">
-            <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+          <div className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs font-bold text-slate-700">
+            <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <span>Commande 1 Clic Direct</span>
           </div>
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-700">
-            <Sparkles className="w-4 h-4 text-[#5433eb] shrink-0" />
+          <div className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs font-bold text-slate-700">
+            <Sparkles className="w-3.5 h-3.5 text-[#5433eb] shrink-0" />
             <span>Produits 100% Testés</span>
           </div>
         </div>

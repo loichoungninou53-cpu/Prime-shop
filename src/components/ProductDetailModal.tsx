@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Product, StoreSettings } from '../types';
+import { Product, StoreSettings, Order } from '../types';
 import { formatPrice } from '../utils/storage';
 import { trackViewContent } from '../utils/pixel';
 import { RichDescriptionRenderer } from './RichDescriptionRenderer';
@@ -22,7 +22,9 @@ import {
   BadgeCheck,
   Clock,
   MapPin,
-  CheckCircle2
+  CheckCircle2,
+  ArrowRight,
+  UserCheck
 } from 'lucide-react';
 
 interface ProductDetailModalProps {
@@ -33,6 +35,7 @@ interface ProductDetailModalProps {
   isWishlisted: boolean;
   onToggleWishlist: (productId: string) => void;
   settings: StoreSettings;
+  onOrderCreated?: (order: Order) => void;
 }
 
 const DEFAULT_VARIANTS = ['Noir Sidéral', 'Titane Naturel', 'Blanc Perle'];
@@ -45,6 +48,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   isWishlisted,
   onToggleWishlist,
   settings,
+  onOrderCreated,
 }) => {
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
@@ -52,12 +56,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [activeTab, setActiveTab] = useState<'desc' | 'specs' | 'delivery'>('desc');
   const [selectedVariant, setSelectedVariant] = useState(DEFAULT_VARIANTS[0]);
 
+  // Pre-WhatsApp quick buyer prompt state
+  const [isQuickPromptOpen, setIsQuickPromptOpen] = useState(false);
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerCity, setBuyerCity] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
+  const [promptError, setPromptError] = useState('');
+
   useEffect(() => {
     if (product) {
       setSelectedImage(product.image);
       setQuantity(1);
       setActiveTab('desc');
       setSelectedVariant(DEFAULT_VARIANTS[0]);
+      setIsQuickPromptOpen(false);
       trackViewContent(product);
     }
   }, [product]);
@@ -67,8 +79,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const isOutOfStock = product.stock <= 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
 
-  // WhatsApp pre-filled order link
-  const whatsappOrderText = encodeURIComponent(
+  // WhatsApp fallback pre-filled order link
+  const defaultWhatsappOrderText = encodeURIComponent(
     `Bonjour Prime Shop !\n` +
     `Je souhaite commander ce produit :\n\n` +
     `📦 *${product.name}*\n` +
@@ -78,7 +90,85 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     `🔗 *Lien :* ${window.location.origin}/#/shop\n\n` +
     `Est-il disponible pour une livraison rapide aujourd'hui ? Merci !`
   );
-  const whatsappUrl = `https://wa.me/${settings.whatsappNumber}?text=${whatsappOrderText}`;
+  const defaultWhatsappUrl = `https://wa.me/${settings.whatsappNumber}?text=${defaultWhatsappOrderText}`;
+
+  const handleOpenWhatsAppPrompt = (e: React.MouseEvent) => {
+    e.preventDefault();
+    soundFX.playPop();
+    setIsQuickPromptOpen(true);
+  };
+
+  const handleConfirmQuickOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!buyerName.trim() || !buyerCity.trim()) {
+      setPromptError('Veuillez renseigner votre nom et votre ville/quartier.');
+      return;
+    }
+
+    const orderNumber = 'PS-' + Math.floor(1000 + Math.random() * 9000);
+    const trackingUrl = `${window.location.origin}/#/suivi?id=${orderNumber}`;
+    const isFreeDelivery = (product.price * quantity) >= settings.freeDeliveryThreshold;
+    const deliveryFee = isFreeDelivery ? 0 : settings.deliveryFee;
+    const total = (product.price * quantity) + deliveryFee;
+
+    if (onOrderCreated) {
+      const newOrder: Order = {
+        id: orderNumber,
+        customer: {
+          fullName: buyerName.trim(),
+          phone: buyerPhone.trim() || settings.whatsappNumber,
+          city: buyerCity.trim(),
+          address: buyerCity.trim(),
+        },
+        items: [
+          {
+            productId: product.id,
+            name: `${product.name} (${selectedVariant})`,
+            price: product.price,
+            quantity,
+            image: product.image,
+          },
+        ],
+        subtotal: product.price * quantity,
+        deliveryFee,
+        discount: 0,
+        total,
+        paymentMethod: 'cod',
+        paymentMethodLabel: 'Paiement à la livraison',
+        status: 'Nouvelle',
+        createdAt: new Date().toLocaleDateString('fr-FR', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      };
+
+      onOrderCreated(newOrder);
+    }
+
+    soundFX.playSuccessChime();
+
+    const formattedMessage = encodeURIComponent(
+      `Bonjour Prime Shop !\n` +
+      `Je confirme ma commande express *#${orderNumber}* :\n\n` +
+      `📦 *Produit :* ${product.name}\n` +
+      `🎨 *Finition :* ${selectedVariant}\n` +
+      `🔢 *Quantité :* ${quantity}\n` +
+      `💰 *Total à régler à la réception :* ${formatPrice(total, settings.currency)}\n\n` +
+      `👤 *Coordonnées de Livraison :*\n` +
+      `• Destinataire : ${buyerName.trim()}\n` +
+      `• Ville & Quartier : ${buyerCity.trim()}\n` +
+      (buyerPhone.trim() ? `• Téléphone d'appel : ${buyerPhone.trim()}\n` : '') +
+      `\n📍 *Suivi de commande en direct :* ${trackingUrl}\n\n` +
+      `Merci de m'indiquer l'heure approximative de passage du coursier !`
+    );
+
+    window.open(`https://wa.me/${settings.whatsappNumber}?text=${formattedMessage}`, '_blank');
+    setIsQuickPromptOpen(false);
+    onClose();
+  };
 
   const handleShare = () => {
     soundFX.playPop();
@@ -320,17 +410,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               {/* Conversion Buttons: WhatsApp Direct + On-Site 1-Click */}
               <div className="space-y-3 pt-3 border-t border-slate-200">
-                {/* WhatsApp Direct Order Button */}
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => soundFX.playPop()}
-                  className="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2.5 transition active:scale-98"
+                {/* WhatsApp Direct Order Button with Fast Info Prompt */}
+                <button
+                  type="button"
+                  onClick={handleOpenWhatsAppPrompt}
+                  className="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2.5 transition active:scale-98 cursor-pointer"
                 >
                   <PhoneCall className="w-5 h-5" />
                   <span>COMMANDER SUR WHATSAPP (RÉPONSE EN 2 MIN)</span>
-                </a>
+                </button>
 
                 {/* 2 Alternate actions */}
                 <div className="grid grid-cols-2 gap-3">
@@ -488,6 +576,119 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         </div>
 
       </div>
+
+      {/* QUICK PRE-WHATSAPP BUYER INFO PROMPT */}
+      {isQuickPromptOpen && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-[28px] bg-white border border-slate-200 shadow-2xl p-6 sm:p-7 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <PhoneCall className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-[#050508]">Commande Express WhatsApp</h3>
+                  <p className="text-[11px] text-slate-500">2 champs seulement pour préparer votre livraison</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickPromptOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-black flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Product Summary */}
+            <div className="p-3 rounded-2xl bg-[#f8f9fa] border border-slate-200/80 flex items-center gap-3">
+              <img src={product.image} alt={product.name} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
+              <div className="flex-1 min-w-0 text-xs">
+                <div className="font-bold text-[#050508] truncate">{product.name}</div>
+                <div className="text-slate-500 text-[11px]">{selectedVariant} • Qté: {quantity}</div>
+                <div className="font-extrabold text-[#5433eb]">{formatPrice(product.price * quantity, settings.currency)}</div>
+              </div>
+            </div>
+
+            {/* Quick Form */}
+            <form onSubmit={handleConfirmQuickOrder} className="space-y-3.5 text-xs">
+              {promptError && (
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold">
+                  {promptError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  Votre Prénom & Nom *
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="Ex: Kouassi Marc"
+                  value={buyerName}
+                  onChange={(e) => {
+                    setBuyerName(e.target.value);
+                    setPromptError('');
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#f8f9fa] border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-[#5433eb] focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  Ville & Quartier de livraison *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Cotonou, Haie Vive (ou Calavi, etc.)"
+                  value={buyerCity}
+                  onChange={(e) => {
+                    setBuyerCity(e.target.value);
+                    setPromptError('');
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#f8f9fa] border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-[#5433eb] focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  Numéro de téléphone d'appel <span className="text-slate-400 font-normal">(optionnel)</span>
+                </label>
+                <input
+                  type="tel"
+                  placeholder="Ex: 97 00 00 00"
+                  value={buyerPhone}
+                  onChange={(e) => setBuyerPhone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#f8f9fa] border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-[#5433eb] focus:bg-white"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                <span>Envoyer ma commande sur WhatsApp</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <div className="text-center pt-1">
+                <a
+                  href={defaultWhatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsQuickPromptOpen(false)}
+                  className="text-[11px] text-slate-500 hover:text-slate-800 underline transition cursor-pointer"
+                >
+                  Passer directement sans remplir d'adresse →
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

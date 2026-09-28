@@ -314,16 +314,27 @@ export const VideoSection: React.FC<VideoSectionProps> = ({ settings }) => {
           <div className="relative w-full max-w-lg rounded-[28px] bg-white border border-slate-200 shadow-2xl p-6 sm:p-8 z-10 space-y-6">
             
             {/* Header */}
-            <div className="flex items-center justify-between">
-              <span className="px-3 py-1 rounded-full bg-[#ece7ff] text-[#5433eb] text-xs font-black uppercase">
-                {selectedShowcase.badge}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-black uppercase">
+                EXEMPLE DE DÉMONSTRATION
               </span>
               <button
                 onClick={() => setSelectedShowcase(null)}
-                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer font-bold"
               >
-                <X className="w-4 h-4" />
+                ✕
               </button>
+            </div>
+
+            {/* Notice "C'était un exemple" */}
+            <div className="p-4 rounded-2xl bg-purple-50/60 border border-[#5433eb]/20 space-y-1.5 text-xs text-slate-700">
+              <div className="flex items-center gap-2 font-black text-[#5433eb]">
+                <Sparkles className="w-4 h-4" />
+                <span>Article de Démonstration Vitrine</span>
+              </div>
+              <p className="leading-relaxed">
+                Cet article qui défilait sur la vitrine était <strong>un exemple de présentation</strong>. Vous pouvez consulter nos articles immédiatement disponibles en stock ou nous contacter sur WhatsApp pour toute commande personnalisée !
+              </p>
             </div>
 
             {/* Product Highlight */}
@@ -346,38 +357,36 @@ export const VideoSection: React.FC<VideoSectionProps> = ({ settings }) => {
               </div>
             </div>
 
-            {/* Fast Order Form */}
-            <div className="space-y-3 pt-2 border-t border-slate-100">
-              <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                Vos Coordonnées Rapides (Optionnel) :
-              </label>
-              <input
-                type="text"
-                placeholder="Votre nom complet"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-[#5433eb]"
-              />
-              <input
-                type="text"
-                placeholder="Votre ville / quartier (ex: Cotonou, Haie Vive, Calavi...)"
-                value={clientCity}
-                onChange={(e) => setClientCity(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-[#5433eb]"
-              />
-            </div>
+            {/* Action Buttons: Return back or WhatsApp */}
+            <div className="space-y-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedShowcase(null)}
+                className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                <span>← Revenir en arrière sur la boutique</span>
+              </button>
 
-            {/* Direct WhatsApp CTA */}
-            <a
-              href={generateWhatsAppUrl(selectedShowcase)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setOrderSent(true)}
-              className="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2.5 transition active:scale-98"
-            >
-              <PhoneCall className="w-5 h-5" />
-              <span>CONFIRMER LA COMMANDE SUR WHATSAPP</span>
-            </a>
+              <a
+                href={`/#/shop`}
+                onClick={() => setSelectedShowcase(null)}
+                className="w-full py-3 px-4 rounded-xl bg-[#5433eb] hover:bg-[#4323d8] text-white font-extrabold text-xs shadow-md shadow-[#5433eb]/20 flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Voir nos produits 100% en stock au Bénin</span>
+              </a>
+
+              <a
+                href={generateWhatsAppUrl(selectedShowcase)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setSelectedShowcase(null)}
+                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition"
+              >
+                <PhoneCall className="w-4 h-4" />
+                <span>Demander la disponibilité sur WhatsApp</span>
+              </a>
+            </div>
 
             {/* Micro Guarantees */}
             <div className="grid grid-cols-2 gap-2 text-center text-xs text-slate-500 pt-1">

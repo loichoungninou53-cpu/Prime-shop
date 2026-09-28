@@ -1,0 +1,26 @@
+{
+  "name": "Prime Shop Bénin - Boutique Officielle",
+  "short_name": "Prime Shop",
+  "description": "Boutique en ligne premium au Bénin avec livraison express 24h et paiement à la réception.",
+  "start_url": "/#/",
+  "scope": "/",
+  "id": "/#/",
+  "display": "standalone",
+  "background_color": "#f2f4f5",
+  "theme_color": "#5433eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -8,6 +8,12 @@
     
     <!-- Favicon: Modern Shop Violet Icon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><circle cx='20' cy='20' r='18' fill='%235433EB'/><path d='M13 14h8a5 5 0 0 1 0 10h-4v6h-4V14zm4 4v3h4a1.5 1.5 0 0 0 0-3h-4z' fill='%23FFFFFF'/><circle cx='27' cy='15' r='3.5' fill='%23A78BFA'/></svg>" />
+    <link rel="apple-touch-icon" href="/pwa-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#5433eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Prime Shop" />
 
     <!-- Google Fonts: Plus Jakarta Sans & Syne / Outfit for Editorial punch -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -50,5 +56,12 @@
   <body class="bg-[#f2f4f5] text-[#050508] min-h-screen selection:bg-[#5433eb] selection:text-white antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>

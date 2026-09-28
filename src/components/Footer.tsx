@@ -126,6 +126,19 @@ export const Footer: React.FC<FooterProps> = ({ settings, setRoute, onOpenFreeGu
                   Mon Espace Client
                 </a>
               </li>
+              <li>
+                <a
+                  href="#/suivi"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setRoute('#/suivi');
+                    scrollToTop();
+                  }}
+                  className="hover:text-[#5433eb] transition font-bold text-[#5433eb]"
+                >
+                  Suivre mon Colis 📦
+                </a>
+              </li>
             </ul>
           </div>
 

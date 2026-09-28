@@ -203,13 +203,13 @@ export const INITIAL_SETTINGS: StoreSettings = {
   currency: 'FCFA',
   deliveryFee: 1500,
   freeDeliveryThreshold: 35000,
-  whatsappNumber: '22997000000',
+  whatsappNumber: '22960416703',
   whatsappGreeting: 'Bonjour Prime Shop, je souhaite passer une commande.',
   facebookPixelId: '109823471829381',
   facebookPixelEnabled: true,
   adminPin: 'admin123',
   adminSecretSlug: 'gestion-prime', // Secret route only known to the owner
-  bannerNotice: '⚡ Livraison offerte dès 35 000 FCFA d\'achats ! Paiement à la livraison partout.',
+  bannerNotice: '⚡ Livraison offerte dès 35 000 FCFA d\'achats ! Paiement à la réception à Cotonou & Calavi.',
   bannerEnabled: true,
   instagramHandle: 'primeshop.bj',
   tiktokHandle: 'primeshop.bj',
@@ -263,7 +263,12 @@ export function getStoredSettings(): StoreSettings {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(INITIAL_SETTINGS));
       return INITIAL_SETTINGS;
     }
-    return { ...INITIAL_SETTINGS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    if (!parsed.whatsappNumber || parsed.whatsappNumber === '22997000000') {
+      parsed.whatsappNumber = '22960416703';
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...INITIAL_SETTINGS, ...parsed }));
+    }
+    return { ...INITIAL_SETTINGS, ...parsed };
   } catch {
     return INITIAL_SETTINGS;
   }

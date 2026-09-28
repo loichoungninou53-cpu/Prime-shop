@@ -48,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'Électronique', route: '#/shop?cat=electronique' },
     { label: 'Accessoires', route: '#/shop?cat=accessoires' },
     { label: 'Nouveautés', route: '#/shop?cat=nouveautes' },
+    { label: 'Suivi Colis', route: '#/suivi' },
   ];
 
   return (

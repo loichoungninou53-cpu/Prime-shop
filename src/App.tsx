@@ -29,6 +29,8 @@ import { FreeGuideModal } from './components/FreeGuideModal';
 import { MobileGlassDock } from './components/MobileGlassDock';
 import { Footer } from './components/Footer';
 import { LiveSalesNotification } from './components/LiveSalesNotification';
+import { TrackingView } from './components/TrackingView';
+import { saveOrderToSupabase } from './utils/supabase';
 
 export default function App() {
   const [route, setRoute] = useState<string>(() => window.location.hash || '#/');
@@ -170,6 +172,9 @@ export default function App() {
     const updatedOrders = [newOrder, ...orders];
     setOrders(updatedOrders);
     saveStoredOrders(updatedOrders);
+
+    // 4. Automatically save to Supabase cloud in background
+    saveOrderToSupabase(newOrder).catch((err) => console.log('Supabase sync background:', err));
   };
 
   // Admin updates
@@ -208,6 +213,29 @@ export default function App() {
   if (route.includes('cat=')) {
     initialCategory = route.split('cat=')[1].split('&')[0];
   }
+
+  // Parse tracking id if in route: e.g. #/suivi?id=PS-1234
+  let trackingOrderId = '';
+  if (route.includes('id=')) {
+    trackingOrderId = route.split('id=')[1].split('&')[0];
+  }
+
+  // Parse direct product link if in route: e.g. #/shop?product=prod_01 or #/product/prod_01
+  useEffect(() => {
+    if (route.includes('product=')) {
+      const pId = route.split('product=')[1].split('&')[0];
+      const target = products.find((p) => p.id === pId || p.slug === pId);
+      if (target) {
+        setSelectedProduct(target);
+      }
+    } else if (route.startsWith('#/product/')) {
+      const pId = route.replace('#/product/', '').split('?')[0];
+      const target = products.find((p) => p.id === pId || p.slug === pId);
+      if (target) {
+        setSelectedProduct(target);
+      }
+    }
+  }, [route, products]);
 
   return (
     <div className="min-h-screen bg-[#f2f4f5] text-[#050508] flex flex-col justify-between selection:bg-[#5433eb] selection:text-white">
@@ -287,6 +315,15 @@ export default function App() {
           />
         )}
 
+        {/* VIEW 3.5: PACKAGE TRACKING PORTAL */}
+        {route.startsWith('#/suivi') && (
+          <TrackingView
+            orders={orders}
+            settings={settings}
+            initialOrderId={trackingOrderId}
+          />
+        )}
+
         {/* VIEW 4: HIDDEN ADMIN DASHBOARD (Accessed only via secret route) */}
         {isAdminRoute && (
           <AdminView
@@ -300,6 +337,39 @@ export default function App() {
             onOpenFreeGuide={() => setIsFreeGuideOpen(true)}
           />
         )}
+
+        {/* VIEW 5: UNKNOWN ROUTE / DEMO PAGE FALLBACK (ZÉRO PAGE BLANCHE) */}
+        {route !== '#/' &&
+          !route.startsWith('#/shop') &&
+          !route.startsWith('#/account') &&
+          !route.startsWith('#/suivi') &&
+          !isAdminRoute && (
+            <div className="py-24 px-4 text-center max-w-lg mx-auto space-y-5 animate-fadeIn">
+              <div className="w-16 h-16 rounded-2xl bg-[#ece7ff] text-[#5433eb] mx-auto flex items-center justify-center font-black text-2xl shadow-sm">
+                📦
+              </div>
+              <h2 className="text-2xl font-black text-[#050508]">
+                Exemple de Présentation
+              </h2>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Cet article ou cette page était <strong>un exemple pour la vitrine</strong>. Vous pouvez revenir en arrière ou découvrir l'ensemble de notre catalogue disponible en stock !
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                <button
+                  onClick={() => navigate('#/')}
+                  className="px-6 py-3 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition cursor-pointer"
+                >
+                  ← Revenir en arrière (Accueil)
+                </button>
+                <button
+                  onClick={() => navigate('#/shop')}
+                  className="px-6 py-3 rounded-full bg-[#5433eb] hover:bg-[#4323d8] text-white text-xs font-black shadow-md shadow-[#5433eb]/20 transition cursor-pointer"
+                >
+                  Voir les produits en stock
+                </button>
+              </div>
+            </div>
+          )}
 
       </main>
 
@@ -333,6 +403,7 @@ export default function App() {
         isWishlisted={selectedProduct ? wishlist.includes(selectedProduct.id) : false}
         onToggleWishlist={handleToggleWishlist}
         settings={settings}
+        onOrderCreated={handleOrderCreated}
       />
 
       {/* Cart Slide-out Drawer */}

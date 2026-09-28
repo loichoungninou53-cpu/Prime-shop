@@ -143,6 +143,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           hour: '2-digit',
           minute: '2-digit',
         }),
+        updatedAt: new Date().toISOString(),
       };
 
       onOrderCreated(newOrder);

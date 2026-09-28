@@ -290,7 +290,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (enteredPin === settings.adminPin || enteredPin === 'admin123') {
+    if (enteredPin === (settings.adminPin || 'admin123')) {
       setIsAuthenticated(true);
       sessionStorage.setItem('prime_admin_auth', 'true');
       setPinError(false);
@@ -437,6 +437,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               image: defaultImg,
               categoryLabel: catLabels[productFormData.category || 'electronique'],
               keyBenefits: parsedBenefits.length > 0 ? parsedBenefits : p.keyBenefits,
+              createdAt: p.createdAt || new Date().toISOString(),
               boxContent: parsedBoxContent.length > 0 ? parsedBoxContent : p.boxContent,
             } as Product)
           : p
@@ -473,6 +474,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         specs: productFormData.specs || [{ label: 'Garantie', value: '12 Mois' }],
         rating: 5.0,
         reviewsCount: 1,
+        createdAt: new Date().toISOString(),
       };
       onUpdateProducts([newProduct, ...products]);
     }
@@ -1853,7 +1855,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     // Propagate real-time immediately to store
                     onUpdateSettings({ ...settingsForm, whatsappNumber: clean });
                   }}
-                  placeholder="22997000000"
+                  placeholder="22960416703"
                   className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono text-sm font-bold focus:outline-none focus:border-[#5433eb]"
                 />
                 <p className="text-[11px] text-slate-500">
@@ -1954,7 +1956,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 💡 À quoi sert l'espace Supabase ci-dessous ?
               </strong>
               <p className="leading-relaxed text-amber-900/90 text-xs">
-                Votre boutique fonctionne et enregistre déjà tous vos produits et commandes directement dans la mémoire de votre téléphone ou ordinateur. <strong>Cet espace Supabase est votre sauvegarde Cloud en ligne 24h/24 et 100% gratuite</strong> : il conserve l'historique complet de vos ventes et de vos stocks dans une vraie base de données PostgreSQL sécurisée. Si vous changez de téléphone, perdez votre appareil ou travaillez à plusieurs sur la boutique, <strong>aucune commande ni aucun produit n'est jamais perdu</strong> !
+                <strong>Supabase est le cerveau de votre boutique</strong> : chaque produit publié, chaque commande et chaque réglage (numéro WhatsApp, Pixel, frais de livraison…) y sont enregistrés automatiquement dès que vous cliquez sur « Enregistrer » ou « Publier ». C'est ce qui permet à un client qui ouvre votre lien depuis <em>son</em> téléphone de voir exactement les mêmes produits que vous, et de suivre son colis. Votre boutique est déjà connectée : <strong>vous n'avez rien à faire ici</strong>, sauf si un jour vous voulez brancher votre propre projet Supabase.
               </p>
             </div>
 

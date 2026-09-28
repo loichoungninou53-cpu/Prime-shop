@@ -18,7 +18,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { soundFX } from '../utils/audio';
-import { getSupabaseClient } from '../utils/supabase';
+import { fetchOrderFromSupabase } from '../utils/supabase';
 import { BeninDeliveryMap } from './BeninDeliveryMap';
 
 interface TrackingViewProps {
@@ -44,22 +44,15 @@ export const TrackingView: React.FC<TrackingViewProps> = ({ orders, settings, in
         setHasSearched(true);
       } else {
         // Fallback check Supabase in background
-        const client = getSupabaseClient();
-        if (client) {
-          client
-            .from('orders')
-            .select('*')
-            .ilike('id', `%${initialOrderId}%`)
-            .limit(1)
-            .then(({ data }) => {
-              if (data && data[0]) {
-                setFoundOrder(data[0]);
-                setSearchCode(data[0].id);
-                setHasSearched(true);
-              }
-            })
-            .catch(() => {});
-        }
+        fetchOrderFromSupabase(initialOrderId)
+          .then((cloudOrder) => {
+            if (cloudOrder) {
+              setFoundOrder(cloudOrder);
+              setSearchCode(cloudOrder.id);
+              setHasSearched(true);
+            }
+          })
+          .catch(() => {});
       }
     }
   }, [initialOrderId, orders]);
@@ -82,20 +75,11 @@ export const TrackingView: React.FC<TrackingViewProps> = ({ orders, settings, in
     } else {
       setFoundOrder(null);
       // Fallback check Supabase
-      const client = getSupabaseClient();
-      if (client) {
-        client
-          .from('orders')
-          .select('*')
-          .ilike('id', `%${query}%`)
-          .limit(1)
-          .then(({ data }) => {
-            if (data && data[0]) {
-              setFoundOrder(data[0]);
-            }
-          })
-          .catch(() => {});
-      }
+      fetchOrderFromSupabase(query)
+        .then((cloudOrder) => {
+          if (cloudOrder) setFoundOrder(cloudOrder);
+        })
+        .catch(() => {});
     }
   };
 

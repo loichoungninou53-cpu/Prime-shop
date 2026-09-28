@@ -275,9 +275,13 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                 <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-400">
                   <Search className="w-8 h-8" />
                 </div>
-                <h3 className="text-base font-bold text-[#050508] mb-1">Aucun produit ne correspond à vos critères</h3>
+                <h3 className="text-base font-bold text-[#050508] mb-1">
+                  {products.length === 0 ? 'Nouveaux articles en cours d\'ajout' : 'Aucun produit ne correspond à vos critères'}
+                </h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto mb-5">
-                  Modifiez votre recherche ou réinitialisez les filtres pour découvrir tout le catalogue.
+                  {products.length === 0
+                    ? 'Notre catalogue est en préparation. Revenez très bientôt ou contactez-nous sur WhatsApp pour une demande spéciale.'
+                    : 'Modifiez votre recherche ou réinitialisez les filtres pour découvrir tout le catalogue.'}
                 </p>
                 <button
                   onClick={resetFilters}

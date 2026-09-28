@@ -28,9 +28,16 @@ import { AdminView } from './components/AdminView';
 import { FreeGuideModal } from './components/FreeGuideModal';
 import { MobileGlassDock } from './components/MobileGlassDock';
 import { Footer } from './components/Footer';
-import { LiveSalesNotification } from './components/LiveSalesNotification';
 import { TrackingView } from './components/TrackingView';
-import { saveOrderToSupabase } from './utils/supabase';
+import {
+  saveOrderToSupabase,
+  fetchProductsFromSupabase,
+  fetchOrdersFromSupabase,
+  fetchSettingsFromSupabase,
+  syncSettingsToSupabase,
+  replaceProductsInSupabase,
+  syncOrdersToSupabase,
+} from './utils/supabase';
 
 export default function App() {
   const [route, setRoute] = useState<string>(() => window.location.hash || '#/');
@@ -60,6 +67,40 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('prime_shop_cart', JSON.stringify(cart));
   }, [cart]);
+
+  // ☁️ CLOUD FIRST : au démarrage, la boutique se charge depuis Supabase.
+  // Ainsi le propriétaire (téléphone A) et le client (téléphone B) voient la même chose.
+  const [cloudReady, setCloudReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [cloudProducts, cloudOrders, cloudSettings] = await Promise.all([
+        fetchProductsFromSupabase(),
+        fetchOrdersFromSupabase(),
+        fetchSettingsFromSupabase(),
+      ]);
+      if (cancelled) return;
+      if (cloudProducts) {
+        setProducts(cloudProducts);
+        saveStoredProducts(cloudProducts);
+      }
+      if (cloudOrders) {
+        setOrders(cloudOrders);
+        saveStoredOrders(cloudOrders);
+      }
+      if (cloudSettings) {
+        setSettings((prev) => {
+          const merged = { ...prev, ...cloudSettings } as StoreSettings;
+          saveStoredSettings(merged);
+          return merged;
+        });
+      }
+      setCloudReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Route listener
   useEffect(() => {
@@ -167,6 +208,7 @@ export default function App() {
     // 2. Update products in state and storage
     setProducts(updatedProducts);
     saveStoredProducts(updatedProducts);
+    replaceProductsInSupabase(updatedProducts).catch(() => {});
 
     // 3. Update orders in state and storage
     const updatedOrders = [newOrder, ...orders];
@@ -181,16 +223,19 @@ export default function App() {
   const handleUpdateProducts = (newProducts: Product[]) => {
     setProducts(newProducts);
     saveStoredProducts(newProducts);
+    replaceProductsInSupabase(newProducts).catch(() => {});
   };
 
   const handleUpdateOrders = (newOrders: Order[]) => {
     setOrders(newOrders);
     saveStoredOrders(newOrders);
+    syncOrdersToSupabase(newOrders).catch(() => {});
   };
 
   const handleUpdateSettings = (newSettings: StoreSettings) => {
     setSettings(newSettings);
     saveStoredSettings(newSettings);
+    syncSettingsToSupabase(newSettings).catch(() => {});
   };
 
   // Category counts
@@ -221,21 +266,22 @@ export default function App() {
   }
 
   // Parse direct product link if in route: e.g. #/shop?product=prod_01 or #/product/prod_01
+  const linkedProductId = (() => {
+    if (route.includes('product=')) return decodeURIComponent(route.split('product=')[1].split('&')[0]);
+    if (route.startsWith('#/product/')) return decodeURIComponent(route.replace('#/product/', '').split('?')[0]);
+    if (route.startsWith('#/produit/')) return decodeURIComponent(route.replace('#/produit/', '').split('?')[0]);
+    return '';
+  })();
+  const isProductLinkRoute = route.startsWith('#/product/') || route.startsWith('#/produit/');
+  const linkedProductFound = linkedProductId
+    ? products.find((p) => p.id === linkedProductId || p.slug === linkedProductId) || null
+    : null;
+
   useEffect(() => {
-    if (route.includes('product=')) {
-      const pId = route.split('product=')[1].split('&')[0];
-      const target = products.find((p) => p.id === pId || p.slug === pId);
-      if (target) {
-        setSelectedProduct(target);
-      }
-    } else if (route.startsWith('#/product/')) {
-      const pId = route.replace('#/product/', '').split('?')[0];
-      const target = products.find((p) => p.id === pId || p.slug === pId);
-      if (target) {
-        setSelectedProduct(target);
-      }
+    if (linkedProductFound) {
+      setSelectedProduct(linkedProductFound);
     }
-  }, [route, products]);
+  }, [linkedProductId, linkedProductFound?.id, cloudReady]);
 
   return (
     <div className="min-h-screen bg-[#f2f4f5] text-[#050508] flex flex-col justify-between selection:bg-[#5433eb] selection:text-white">
@@ -289,8 +335,8 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW 2: BOUTIQUE / CATALOGUE */}
-        {route.startsWith('#/shop') && (
+        {/* VIEW 2: BOUTIQUE / CATALOGUE (aussi derrière un lien produit partagé) */}
+        {(route.startsWith('#/shop') || (isProductLinkRoute && (linkedProductFound || !cloudReady))) && (
           <CatalogView
             products={products.filter((p) => p.status === 'published')}
             onSelectProduct={setSelectedProduct}
@@ -341,6 +387,7 @@ export default function App() {
         {/* VIEW 5: UNKNOWN ROUTE / DEMO PAGE FALLBACK (ZÉRO PAGE BLANCHE) */}
         {route !== '#/' &&
           !route.startsWith('#/shop') &&
+          !(isProductLinkRoute && (linkedProductFound || !cloudReady)) &&
           !route.startsWith('#/account') &&
           !route.startsWith('#/suivi') &&
           !isAdminRoute && (
@@ -437,12 +484,12 @@ export default function App() {
         onClose={() => setIsFreeGuideOpen(false)}
       />
 
-      {/* Live Social Proof Sales Notification (Benin verified orders) */}
-      {!isAdminRoute && (
-        <LiveSalesNotification
-          products={products}
-          onSelectProduct={setSelectedProduct}
-        />
+      {/* Chargement cloud discret lors de l'ouverture d'un lien produit partagé */}
+      {!!linkedProductId && !cloudReady && !linkedProductFound && (
+        <div className="fixed inset-0 z-[60] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+          <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-[#5433eb] animate-spin" />
+          <p className="text-xs font-bold text-slate-600">Ouverture du produit…</p>
+        </div>
       )}
 
     </div>

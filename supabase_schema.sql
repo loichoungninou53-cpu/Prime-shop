@@ -59,10 +59,10 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
     currency TEXT NOT NULL DEFAULT 'FCFA',
     delivery_fee NUMERIC DEFAULT 1500,
     free_delivery_threshold NUMERIC DEFAULT 35000,
-    whatsapp_number TEXT NOT NULL DEFAULT '22997000000',
+    whatsapp_number TEXT NOT NULL DEFAULT '22960416703',
     whatsapp_greeting TEXT DEFAULT 'Bonjour Prime Shop, je souhaite passer une commande.',
-    facebook_pixel_id TEXT DEFAULT '109823471829381',
-    facebook_pixel_enabled BOOLEAN DEFAULT true,
+    facebook_pixel_id TEXT DEFAULT '',
+    facebook_pixel_enabled BOOLEAN DEFAULT false,
     admin_pin TEXT DEFAULT 'admin123',
     admin_secret_slug TEXT DEFAULT 'gestion-prime',
     banner_notice TEXT DEFAULT '⚡ Livraison offerte dès 35 000 FCFA d''achats ! Paiement à la réception à Cotonou & Calavi.',
@@ -103,7 +103,7 @@ CREATE POLICY "Gestion complète paramètres" ON public.store_settings
 
 -- 5. Données initiales par défaut (Paramètres de départ)
 INSERT INTO public.store_settings (id, store_name, tagline, currency, delivery_fee, free_delivery_threshold, whatsapp_number, admin_pin)
-VALUES ('primary', 'Prime Shop', 'L''élégance rencontre le craft', 'FCFA', 1500, 35000, '22997000000', 'admin123')
+VALUES ('primary', 'Prime Shop', 'L''élégance rencontre le craft', 'FCFA', 1500, 35000, '22960416703', 'admin123')
 ON CONFLICT (id) DO NOTHING;
 
 -- Message de confirmation dans Supabase

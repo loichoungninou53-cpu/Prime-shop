@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { formatPrice } from '../utils/storage';
 import { trackViewContent } from '../utils/pixel';
 import { StoreSettings } from '../types';
@@ -15,7 +16,9 @@ import {
   Volume2,
   VolumeX,
   Flame,
-  Star
+  Star,
+  ShoppingBag,
+  Truck
 } from 'lucide-react';
 
 export interface ShowcaseProduct {
@@ -307,8 +310,8 @@ export const VideoSection: React.FC<VideoSectionProps> = ({ settings }) => {
       {/* ------------------------------------------------------------- */}
       {/* 1-CLICK WHATSAPP MODAL FOR SHOWCASE PRODUCT */}
       {/* ------------------------------------------------------------- */}
-      {selectedShowcase && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+      {selectedShowcase && createPortal(
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
           <div className="fixed inset-0" onClick={() => setSelectedShowcase(null)} />
 
           <div className="relative w-full max-w-lg rounded-[28px] bg-white border border-slate-200 shadow-2xl p-6 sm:p-8 z-10 space-y-6">
@@ -401,7 +404,8 @@ export const VideoSection: React.FC<VideoSectionProps> = ({ settings }) => {
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </section>

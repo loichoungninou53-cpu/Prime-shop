@@ -109,7 +109,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     soundFX.playSuccessChime();
 
     // Trigger Meta Facebook Pixel Purchase event
-    trackPurchase(newOrder, settings.currency);
+    trackPurchase(newOrder);
 
     // Clear cart
     onClearCart();

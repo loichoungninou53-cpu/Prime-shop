@@ -6,7 +6,7 @@ interface FinalCTAProps {
   whatsappNumber?: string;
 }
 
-export const FinalCTA: React.FC<FinalCTAProps> = ({ onDiscoverClick, whatsappNumber = '22990000000' }) => {
+export const FinalCTA: React.FC<FinalCTAProps> = ({ onDiscoverClick, whatsappNumber = '22960416703' }) => {
   return (
     <section className="py-24 relative overflow-hidden bg-[#f2f4f5]">
       {/* Subtle violet ambient light */}

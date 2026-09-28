@@ -80,13 +80,25 @@ export default function App() {
         fetchSettingsFromSupabase(),
       ]);
       if (cancelled) return;
-      if (cloudProducts) {
+      // Produits : le cloud fait foi ; mais s'il est vide et que cet appareil a
+      // déjà un catalogue (ancien propriétaire hors-ligne), on le migre vers le cloud
+      // au lieu de l'effacer.
+      const localProducts = getStoredProducts();
+      if (cloudProducts && cloudProducts.length > 0) {
         setProducts(cloudProducts);
         saveStoredProducts(cloudProducts);
+      } else if (cloudProducts && cloudProducts.length === 0 && localProducts.length > 0) {
+        replaceProductsInSupabase(localProducts).catch(() => {});
       }
+      // Commandes : fusion cloud + local (aucune commande n'est perdue)
       if (cloudOrders) {
-        setOrders(cloudOrders);
-        saveStoredOrders(cloudOrders);
+        const localOrders = getStoredOrders();
+        const seen = new Set(cloudOrders.map((o) => o.id));
+        const onlyLocal = localOrders.filter((o) => !seen.has(o.id));
+        const merged = [...cloudOrders, ...onlyLocal].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+        setOrders(merged);
+        saveStoredOrders(merged);
+        if (onlyLocal.length) syncOrdersToSupabase(merged).catch(() => {});
       }
       if (cloudSettings) {
         setSettings((prev) => {

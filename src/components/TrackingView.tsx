@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Order, StoreSettings } from '../types';
 import { formatPrice } from '../utils/storage';
+import { copyToClipboard } from '../utils/clipboard';
 import { 
   Package, 
   Search, 
@@ -93,7 +94,7 @@ export const TrackingView: React.FC<TrackingViewProps> = ({ orders, settings, in
         url: trackingUrl,
       }).catch(() => {});
     } else {
-      navigator.clipboard.writeText(trackingUrl);
+      copyToClipboard(trackingUrl);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product, StoreSettings, Order } from '../types';
 import { formatPrice } from '../utils/storage';
+import { copyToClipboard } from '../utils/clipboard';
 import { trackViewContent } from '../utils/pixel';
 import { RichDescriptionRenderer } from './RichDescriptionRenderer';
 import { soundFX } from '../utils/audio';
@@ -180,7 +181,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         url: window.location.href,
       }).catch(() => {});
     } else {
-      navigator.clipboard.writeText(window.location.href);
+      copyToClipboard(window.location.href);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     }

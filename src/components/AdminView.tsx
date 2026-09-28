@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Product, Order, StoreSettings, PixelEventLog } from '../types';
 import { formatPrice } from '../utils/storage';
+import { copyToClipboard } from '../utils/clipboard';
 import { getPixelLogs, clearPixelLogs } from '../utils/pixel';
 import { RichDescriptionRenderer } from './RichDescriptionRenderer';
 import { 
   getSupabaseConfig, 
   saveSupabaseConfig, 
   testSupabaseConnection, 
-  syncProductsToSupabase 
+  syncProductsToSupabase,
+  SyncResult
 } from '../utils/supabase';
 import { 
   LayoutDashboard, 
@@ -57,7 +59,7 @@ interface AdminViewProps {
   products: Product[];
   orders: Order[];
   settings: StoreSettings;
-  onUpdateProducts: (products: Product[]) => void;
+  onUpdateProducts: (products: Product[]) => Promise<SyncResult>;
   onUpdateOrders: (orders: Order[]) => void;
   onUpdateSettings: (settings: StoreSettings) => void;
   onExitAdmin: () => void;
@@ -79,6 +81,12 @@ export const AdminView: React.FC<AdminViewProps> = ({
     return sessionStorage.getItem('prime_admin_auth') === 'true';
   });
   const [enteredPin, setEnteredPin] = useState('');
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const showToast = (type: 'success' | 'error', text: string) => {
+    setToast({ type, text });
+    window.setTimeout(() => setToast(null), type === 'error' ? 7000 : 3500);
+  };
   const [pinError, setPinError] = useState(false);
 
   // Active Tab
@@ -283,7 +291,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   const handleCopyProductLink = (p: Product) => {
     const url = `${window.location.origin}/#/shop?cat=${p.category}&product=${p.id}`;
-    navigator.clipboard.writeText(url);
+    copyToClipboard(url).then((ok) => {
+      if (!ok) showToast('error', 'Copie impossible — lien : ' + url);
+    });
     setCopiedProductId(p.id);
     setTimeout(() => setCopiedProductId(null), 2500);
   };
@@ -338,29 +348,64 @@ export const AdminView: React.FC<AdminViewProps> = ({
       }
       return p;
     });
-    onUpdateProducts(updated);
+    onUpdateProducts(updated).then((r) => {
+      if (!r.ok) showToast('error', `❌ Stock non enregistré. ${r.error || ''}`);
+    });
   };
 
-  // Image Upload handler (Base64 file reader)
-  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Image Upload : compression côté client (max 1280px, JPEG 82%) avant stockage.
+  // Une photo de téléphone de 4 Mo devient ~150 Ko : compatible base de données et cache local.
+  const compressImageFile = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1080;
+        const ratio = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          reject(new Error('Canvas indisponible'));
+          return;
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', 0.78));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Image illisible'));
+      };
+      img.src = url;
+    });
+
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('La photo est trop lourde (maximum 5 Mo). Veuillez choisir une photo plus légère.');
+    if (!file.type.startsWith('image/')) {
+      showToast('error', 'Ce fichier n\'est pas une image.');
       return;
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64Url = event.target?.result as string;
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('error', 'Photo trop lourde (maximum 15 Mo).');
+      return;
+    }
+    try {
+      const compressed = await compressImageFile(file);
       setProductFormData((prev) => ({
         ...prev,
-        image: base64Url,
-        gallery: [base64Url, ...(prev.gallery || [])],
+        image: compressed,
+        gallery: [compressed, ...(prev.gallery || []).filter((g) => g !== prev.image)],
       }));
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error('Image compression failed:', err);
+      showToast('error', 'Impossible de lire cette photo. Essayez un autre fichier.');
+    }
   };
 
   // Open modal for new product
@@ -397,10 +442,15 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   // Product Save (Add / Edit) with Maketou Sales Page parsing
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSavingProduct) return; // anti double-soumission
     if (!productFormData.name || !productFormData.price) {
-      alert('Veuillez renseigner au minimum le nom et le prix du produit.');
+      showToast('error', 'Veuillez renseigner au minimum le nom et le prix du produit.');
+      return;
+    }
+    if (Number(productFormData.price) <= 0 || Number.isNaN(Number(productFormData.price))) {
+      showToast('error', 'Le prix doit être un nombre supérieur à 0.');
       return;
     }
 
@@ -423,10 +473,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
-    const defaultImg =
-      productFormData.image ||
-      'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=800&q=80';
+    if (!productFormData.image) {
+      showToast('error', 'Ajoutez une photo du produit (upload ou lien).');
+      return;
+    }
+    const defaultImg = productFormData.image;
 
+    setIsSavingProduct(true);
+    let nextCatalog: Product[];
     if (productFormData.id) {
       // Edit existing
       const updated = products.map((p) =>
@@ -442,7 +496,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
             } as Product)
           : p
       );
-      onUpdateProducts(updated);
+      nextCatalog = updated;
     } else {
       // Add new
       const newProduct: Product = {
@@ -476,15 +530,23 @@ export const AdminView: React.FC<AdminViewProps> = ({
         reviewsCount: 1,
         createdAt: new Date().toISOString(),
       };
-      onUpdateProducts([newProduct, ...products]);
+      nextCatalog = [newProduct, ...products];
     }
 
+    const result = await onUpdateProducts(nextCatalog);
+    setIsSavingProduct(false);
+    if (!result.ok) {
+      showToast('error', `❌ Produit NON enregistré. ${result.error || ''}`);
+      return; // le formulaire reste ouvert, rien n'est perdu
+    }
+    showToast('success', productFormData.id ? '✅ Produit mis à jour dans la base.' : '✅ Produit publié et enregistré dans la base.');
     setIsEditingProduct(false);
   };
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer définitivement ce produit de la boutique ?')) {
-      onUpdateProducts(products.filter((p) => p.id !== productId));
+      const result = await onUpdateProducts(products.filter((p) => p.id !== productId));
+      showToast(result.ok ? 'success' : 'error', result.ok ? '🗑️ Produit supprimé de la base.' : `❌ Suppression échouée. ${result.error || ''}`);
     }
   };
 
@@ -534,7 +596,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
     reader.onload = (ev) => {
       try {
         const parsed = JSON.parse(ev.target?.result as string);
-        if (parsed.products) onUpdateProducts(parsed.products);
+        if (parsed.products) onUpdateProducts(parsed.products).then((r) => { if (!r.ok) showToast('error', `❌ Import produits échoué. ${r.error || ''}`); });
         if (parsed.orders) onUpdateOrders(parsed.orders);
         if (parsed.settings) onUpdateSettings(parsed.settings);
         alert('Sauvegarde importée avec succès !');
@@ -627,6 +689,18 @@ export const AdminView: React.FC<AdminViewProps> = ({
   // -------------------------------------------------------------
   return (
     <div className="min-h-screen pb-24 bg-[#f2f4f5] text-[#050508]">
+      {toast && (
+        <div
+          role="status"
+          className={`fixed top-4 left-1/2 -translate-x-1/2 z-[200] max-w-[92vw] sm:max-w-md px-5 py-3 rounded-2xl shadow-2xl text-xs font-bold border animate-fadeIn ${
+            toast.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : 'bg-rose-50 text-rose-800 border-rose-200'
+          }`}
+        >
+          {toast.text}
+        </div>
+      )}
       
       {/* Top Bar Navigation */}
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
@@ -1211,9 +1285,12 @@ export const AdminView: React.FC<AdminViewProps> = ({
                       </button>
                       <button
                         type="submit"
-                        className="px-6 py-2.5 rounded-xl bg-[#5433eb] hover:bg-[#4323d8] text-white font-extrabold shadow-md shadow-[#5433eb]/20 transition cursor-pointer"
+                        disabled={isSavingProduct}
+                        className="px-6 py-2.5 rounded-xl bg-[#5433eb] hover:bg-[#4323d8] disabled:opacity-60 disabled:cursor-wait text-white font-extrabold shadow-md shadow-[#5433eb]/20 transition cursor-pointer"
                       >
-                        {productFormData.id ? 'Mettre à jour le produit' : 'Publier sur la boutique'}
+                        {isSavingProduct
+                          ? 'Enregistrement dans la base…'
+                          : productFormData.id ? 'Mettre à jour le produit' : 'Publier sur la boutique'}
                       </button>
                     </div>
 

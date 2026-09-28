@@ -63,37 +63,37 @@ export const testSupabaseConnection = async (): Promise<{ success: boolean; mess
 /**
  * Synchronise les produits vers Supabase
  */
+const productToRow = (p: Product) => ({
+  id: p.id,
+  name: p.name,
+  slug: p.slug || p.id,
+  category: p.category,
+  category_label: p.categoryLabel,
+  price: p.price,
+  old_price: p.oldPrice || null,
+  stock: p.stock,
+  featured: p.featured ?? true,
+  is_new: !!p.isNew,
+  is_popular: !!p.isPopular,
+  status: p.status || 'published',
+  image: p.image,
+  gallery: p.gallery || [p.image],
+  catchphrase: p.catchphrase || '',
+  key_benefits: p.keyBenefits || [],
+  box_content: p.boxContent || [],
+  warranty_notice: p.warrantyNotice || '',
+  description: p.description || '',
+  specs: p.specs || [],
+  rating: p.rating || 5.0,
+  reviews_count: p.reviewsCount || 1,
+  created_at: p.createdAt || new Date().toISOString(),
+});
+
 export const syncProductsToSupabase = async (products: Product[]): Promise<boolean> => {
   const client = getSupabaseClient();
   if (!client) return false;
-
   try {
-    const rows = products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      slug: p.slug || p.id,
-      category: p.category,
-      category_label: p.categoryLabel,
-      price: p.price,
-      old_price: p.oldPrice || null,
-      stock: p.stock,
-      featured: p.featured ?? true,
-      is_new: !!p.isNew,
-      is_popular: !!p.isPopular,
-      status: p.status || 'published',
-      image: p.image,
-      gallery: p.gallery || [p.image],
-      catchphrase: p.catchphrase || '',
-      key_benefits: p.keyBenefits || [],
-      box_content: p.boxContent || [],
-      warranty_notice: p.warrantyNotice || '',
-      description: p.description || '',
-      specs: p.specs || [],
-      rating: p.rating || 5.0,
-      reviews_count: p.reviewsCount || 1,
-    }));
-
-    const { error } = await client.from('products').upsert(rows, { onConflict: 'id' });
+    const { error } = await client.from('products').upsert(products.map(productToRow), { onConflict: 'id' });
     if (error) {
       console.error('Erreur sync produits Supabase:', error);
       return false;
@@ -276,21 +276,45 @@ export const syncSettingsToSupabase = async (s: StoreSettings): Promise<boolean>
   }
 };
 
-/** Upsert tous les produits ET supprime du cloud ceux retirés dans l'admin */
-export const replaceProductsInSupabase = async (products: Product[]): Promise<boolean> => {
+export interface SyncResult {
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Persiste le catalogue complet : upsert de tous les produits, puis suppression
+ * dans le cloud de ceux retirés dans l'admin. Retourne une erreur lisible en cas d'échec.
+ */
+export const replaceProductsInSupabase = async (products: Product[]): Promise<SyncResult> => {
   const client = getSupabaseClient();
-  if (!client) return false;
+  if (!client) return { ok: false, error: 'Connexion Supabase non configurée.' };
   try {
-    const ok = products.length ? await syncProductsToSupabase(products) : true;
-    const { data } = await client.from('products').select('id');
+    if (products.length) {
+      const rows = products.map(productToRow);
+      const { error } = await client.from('products').upsert(rows, { onConflict: 'id' });
+      if (error) {
+        console.error('Product upsert failed:', error);
+        return { ok: false, error: `Enregistrement refusé par la base : ${error.message}` };
+      }
+    }
+    const { data, error: listError } = await client.from('products').select('id');
+    if (listError) {
+      console.error('Product list failed:', listError);
+      return { ok: false, error: `Lecture de la base impossible : ${listError.message}` };
+    }
     const keep = new Set(products.map((p) => p.id));
     const toDelete = (data || []).map((r: any) => r.id).filter((id: string) => !keep.has(id));
     if (toDelete.length) {
-      await client.from('products').delete().in('id', toDelete);
+      const { error: delError } = await client.from('products').delete().in('id', toDelete);
+      if (delError) {
+        console.error('Product delete failed:', delError);
+        return { ok: false, error: `Suppression refusée par la base : ${delError.message}` };
+      }
     }
-    return ok;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (err: any) {
+    console.error('Product sync exception:', err);
+    return { ok: false, error: `Réseau indisponible : ${err?.message || 'erreur inconnue'}` };
   }
 };
 

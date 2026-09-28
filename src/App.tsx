@@ -37,6 +37,7 @@ import {
   syncSettingsToSupabase,
   replaceProductsInSupabase,
   syncOrdersToSupabase,
+  SyncResult,
 } from './utils/supabase';
 
 export default function App() {
@@ -88,7 +89,9 @@ export default function App() {
         setProducts(cloudProducts);
         saveStoredProducts(cloudProducts);
       } else if (cloudProducts && cloudProducts.length === 0 && localProducts.length > 0) {
-        replaceProductsInSupabase(localProducts).catch(() => {});
+        replaceProductsInSupabase(localProducts).then((r) => {
+          if (!r.ok) console.error('Migration produits locaux → cloud échouée:', r.error);
+        });
       }
       // Commandes : fusion cloud + local (aucune commande n'est perdue)
       if (cloudOrders) {
@@ -220,7 +223,9 @@ export default function App() {
     // 2. Update products in state and storage
     setProducts(updatedProducts);
     saveStoredProducts(updatedProducts);
-    replaceProductsInSupabase(updatedProducts).catch(() => {});
+    replaceProductsInSupabase(updatedProducts).then((r) => {
+      if (!r.ok) console.error('Stock sync failed:', r.error);
+    });
 
     // 3. Update orders in state and storage
     const updatedOrders = [newOrder, ...orders];
@@ -228,26 +233,38 @@ export default function App() {
     saveStoredOrders(updatedOrders);
 
     // 4. Automatically save to Supabase cloud in background
-    saveOrderToSupabase(newOrder).catch((err) => console.log('Supabase sync background:', err));
+    saveOrderToSupabase(newOrder).then((ok) => {
+      if (!ok) console.error('Order save to Supabase failed:', newOrder.id);
+    });
   };
 
   // Admin updates
-  const handleUpdateProducts = (newProducts: Product[]) => {
-    setProducts(newProducts);
-    saveStoredProducts(newProducts);
-    replaceProductsInSupabase(newProducts).catch(() => {});
+  // Règle : la base de données d'abord. L'interface ne reflète le produit
+  // qu'une fois l'écriture PostgreSQL confirmée ; sinon l'erreur est remontée à l'admin.
+  const handleUpdateProducts = async (newProducts: Product[]): Promise<SyncResult> => {
+    const result = await replaceProductsInSupabase(newProducts);
+    if (!result.ok) return result;
+    const fresh = await fetchProductsFromSupabase();
+    const persisted = fresh ?? newProducts;
+    setProducts(persisted);
+    saveStoredProducts(persisted);
+    return { ok: true };
   };
 
   const handleUpdateOrders = (newOrders: Order[]) => {
     setOrders(newOrders);
     saveStoredOrders(newOrders);
-    syncOrdersToSupabase(newOrders).catch(() => {});
+    syncOrdersToSupabase(newOrders).then((ok) => {
+      if (!ok) console.error('Orders sync to Supabase failed');
+    });
   };
 
   const handleUpdateSettings = (newSettings: StoreSettings) => {
     setSettings(newSettings);
     saveStoredSettings(newSettings);
-    syncSettingsToSupabase(newSettings).catch(() => {});
+    syncSettingsToSupabase(newSettings).then((ok) => {
+      if (!ok) console.error('Settings sync to Supabase failed');
+    });
   };
 
   // Category counts

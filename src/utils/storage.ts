@@ -41,8 +41,28 @@ export function getStoredProducts(): Product[] {
   }
 }
 
+/**
+ * Cache local des produits. Supabase est la source de vérité : si le quota
+ * localStorage (~5 Mo) est dépassé (photos en base64), on stocke une version
+ * allégée sans les images embarquées au lieu de lever une exception.
+ */
 export function saveStoredProducts(products: Product[]) {
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  const persist = (list: Product[]) => localStorage.setItem(PRODUCTS_KEY, JSON.stringify(list));
+  try {
+    persist(products);
+  } catch (err) {
+    console.warn('Cache produits : quota localStorage dépassé, version allégée conservée.', err);
+    try {
+      const light = products.map((p) => ({
+        ...p,
+        image: p.image?.startsWith('data:') ? '' : p.image,
+        gallery: (p.gallery || []).filter((g) => !g.startsWith('data:')),
+      }));
+      persist(light);
+    } catch {
+      localStorage.removeItem(PRODUCTS_KEY);
+    }
+  }
   window.dispatchEvent(new CustomEvent('prime_products_updated', { detail: products }));
 }
 

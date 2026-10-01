@@ -16,6 +16,8 @@ export interface Product {
   image: string;
   gallery: string[];
   description: string;
+  /** false = description non encore téléchargée (liste allégée). undefined/true = disponible. */
+  descriptionLoaded?: boolean;
   // Maketou-style Sales Page structured fields
   catchphrase?: string; // Accroche commerciale percutante
   keyBenefits?: string[]; // 3 à 5 points forts majeurs

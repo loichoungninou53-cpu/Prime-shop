@@ -3,13 +3,14 @@ import { Product, Order, StoreSettings, PixelEventLog } from '../types';
 import { formatPrice } from '../utils/storage';
 import { copyToClipboard } from '../utils/clipboard';
 import { getPixelLogs, clearPixelLogs } from '../utils/pixel';
-import { RichDescriptionRenderer } from './RichDescriptionRenderer';
+import { RichTextEditor } from './RichTextEditor';
 import { 
   getSupabaseConfig, 
   saveSupabaseConfig, 
   testSupabaseConnection, 
   syncProductsToSupabase,
-  SyncResult
+  SyncResult,
+  fetchProductDescription
 } from '../utils/supabase';
 import { 
   LayoutDashboard, 
@@ -121,8 +122,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
   // Textarea multi-line helpers for Maketou fields
   const [benefitsText, setBenefitsText] = useState('');
   const [boxContentText, setBoxContentText] = useState('');
-  const [descViewMode, setDescViewMode] = useState<'edit' | 'preview'>('edit');
-  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // File upload ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -205,57 +204,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
   }, [settings]);
 
   // Shopify-Style Rich Toolbar Action Handler
-  const applyToolbarFormat = (type: 'bold' | 'italic' | 'heading' | 'bullet' | 'link' | 'image' | 'quote') => {
-    const textarea = descriptionTextareaRef.current;
-    const currentVal = productFormData.description || '';
-
-    if (!textarea) {
-      if (type === 'bold') setProductFormData(p => ({ ...p, description: currentVal + '\n**Texte en gras**\n' }));
-      return;
-    }
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = currentVal.substring(start, end);
-    let replacement = '';
-
-    switch (type) {
-      case 'bold':
-        replacement = selected ? `**${selected}**` : '**Texte en gras**';
-        break;
-      case 'italic':
-        replacement = selected ? `*${selected}*` : '*Texte en italique*';
-        break;
-      case 'heading':
-        replacement = selected ? `\n### ${selected}\n` : '\n### Titre de Section Clé\n';
-        break;
-      case 'bullet':
-        replacement = selected ? `\n- ${selected}\n` : '\n- Caractéristique clé ou avantage\n';
-        break;
-      case 'link':
-        const linkUrl = prompt('Entrez l\'URL du lien :', 'https://');
-        if (!linkUrl) return;
-        replacement = `[${selected || 'Cliquez ici pour voir'}](${linkUrl})`;
-        break;
-      case 'image':
-        const imgUrl = prompt('Entrez l\'adresse URL de l\'image :', 'https://images.unsplash.com/...');
-        if (!imgUrl) return;
-        replacement = `\n![${selected || 'Aperçu du produit'}](${imgUrl})\n`;
-        break;
-      case 'quote':
-        replacement = selected ? `\n> ${selected}\n` : '\n> Note importante : Produit original certifié conforme.\n';
-        break;
-    }
-
-    const updatedText = currentVal.substring(0, start) + replacement + currentVal.substring(end);
-    setProductFormData(prev => ({ ...prev, description: updatedText }));
-
-    setTimeout(() => {
-      textarea.focus();
-      const newPos = start + replacement.length;
-      textarea.setSelectionRange(newPos, newPos);
-    }, 50);
-  };
 
   const handleInsertMaketouTemplate = () => {
     const template = `🔥 **Offre Spéciale Prime Shop — Stock Limité Cotonou**
@@ -434,8 +382,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   // Open modal for edit product
-  const handleOpenEditProduct = (p: Product) => {
-    setProductFormData({ ...p });
+  const handleOpenEditProduct = async (p: Product) => {
+    let product = p;
+    if (p.descriptionLoaded === false) {
+      const desc = await fetchProductDescription(p.id);
+      if (desc === null) {
+        showToast('error', 'Impossible de charger la description depuis la base. Vérifiez votre connexion.');
+        return;
+      }
+      product = { ...p, description: desc, descriptionLoaded: true };
+    }
+    setProductFormData({ ...product });
     setBenefitsText(p.keyBenefits ? p.keyBenefits.join('\n') : '');
     setBoxContentText(p.boxContent ? p.boxContent.join('\n') : '');
     setIsEditingProduct(true);
@@ -488,6 +445,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
           ? ({
               ...p,
               ...productFormData,
+              descriptionLoaded: true,
               image: defaultImg,
               categoryLabel: catLabels[productFormData.category || 'electronique'],
               keyBenefits: parsedBenefits.length > 0 ? parsedBenefits : p.keyBenefits,
@@ -529,6 +487,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         rating: 5.0,
         reviewsCount: 1,
         createdAt: new Date().toISOString(),
+        descriptionLoaded: true,
       };
       nextCatalog = [newProduct, ...products];
     }
@@ -1139,137 +1098,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
                         />
                       </div>
 
-                      {/* SHOPIFY-STYLE RICH TEXT EDITOR TOOLBAR */}
+                      {/* ÉDITEUR DE DESCRIPTION RICHE (type Shopify) */}
                       <div className="pt-3 border-t border-[#5433eb]/15 space-y-2">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <label className="text-[#050508] font-black flex items-center gap-1.5 text-xs">
-                            <FileText className="w-4 h-4 text-[#5433eb]" />
-                            <span>Description Détaillée (Barre d'outils Shopify / Maketou / Chariow)</span>
-                          </label>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={handleInsertMaketouTemplate}
-                              className="px-2.5 py-1 rounded-lg bg-[#ece7ff] hover:bg-[#ded6ff] text-[#5433eb] border border-[#5433eb]/30 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
-                            >
-                              <Sparkles className="w-3 h-3" />
-                              <span>Template Maketou</span>
-                            </button>
-
-                            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
-                              <button
-                                type="button"
-                                onClick={() => setDescViewMode('edit')}
-                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                                  descViewMode === 'edit'
-                                    ? 'bg-[#5433eb] text-white shadow-xs'
-                                    : 'text-slate-600 hover:text-black'
-                                }`}
-                              >
-                                Éditeur
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDescViewMode('preview')}
-                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                                  descViewMode === 'preview'
-                                    ? 'bg-[#5433eb] text-white shadow-xs'
-                                    : 'text-slate-600 hover:text-black'
-                                }`}
-                              >
-                                Aperçu Rendu
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Interactive Toolbar Buttons */}
-                        {descViewMode === 'edit' && (
-                          <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-xl bg-white border border-slate-300 shadow-xs">
-                            <button
-                              type="button"
-                              onClick={() => applyToolbarFormat('bold')}
-                              className="p-1.5 rounded hover:bg-slate-100 text-slate-700 font-black text-xs transition cursor-pointer"
-                              title="Gras (**texte**)"
-                            >
-                              <Bold className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => applyToolbarFormat('italic')}
-                              className="p-1.5 rounded hover:bg-slate-100 text-slate-700 italic text-xs transition cursor-pointer"
-                              title="Italique (*texte*)"
-                            >
-                              <Italic className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="w-px h-4 bg-slate-200 mx-0.5" />
-                            <button
-                              type="button"
-                              onClick={() => applyToolbarFormat('heading')}
-                              className="p-1.5 rounded hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer"
-                              title="Titre de section (### Titre)"
-                            >
-                              <Heading className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => applyToolbarFormat('bullet')}
-                              className="p-1.5 rounded hover:bg-slate-100 text-slate-700 transition cursor-pointer"
-                              title="Liste à puces (- item)"
-                            >
-                              <List className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => applyToolbarFormat('quote')}
-                              className="p-1.5 rounded hover:bg-slate-100 text-slate-700 transition cursor-pointer"
-                              title="Encadré / Citation (> note)"
-                            >
-                              <Quote className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="w-px h-4 bg-slate-200 mx-0.5" />
-                            <button
-                              type="button"
-                              onClick={() => applyToolbarFormat('link')}
-                              className="p-1.5 rounded hover:bg-slate-100 text-slate-700 flex items-center gap-1 text-[11px] font-semibold transition cursor-pointer"
-                              title="Insérer un lien cliquable [titre](url)"
-                            >
-                              <Link2 className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">Lien</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => applyToolbarFormat('image')}
-                              className="p-1.5 rounded hover:bg-slate-100 text-slate-700 flex items-center gap-1 text-[11px] font-semibold transition cursor-pointer"
-                              title="Insérer une image ![alt](url)"
-                            >
-                              <ImageIcon className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">Image</span>
-                            </button>
-                          </div>
-                        )}
-
-                        {descViewMode === 'edit' ? (
-                          <div>
-                            <textarea
-                              ref={descriptionTextareaRef}
-                              rows={7}
-                              value={productFormData.description || ''}
-                              onChange={(e) => setProductFormData({ ...productFormData, description: e.target.value })}
-                              placeholder="Écrivez ou collez votre description ici. Utilisez les boutons au-dessus pour mettre en gras, ajouter des puces, des images ou des liens..."
-                              className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 text-xs focus:outline-none focus:border-[#5433eb] leading-relaxed font-mono"
-                            />
-                            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
-                              <span>Compatible avec le markdown de Maketou, Chariow & ChatGPT</span>
-                              <span>{productFormData.description?.length || 0} caractères</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="p-4 rounded-xl bg-white border border-slate-200 max-h-64 overflow-y-auto">
-                            <RichDescriptionRenderer content={productFormData.description || '*Aucune description pour le moment.*'} />
-                          </div>
-                        )}
+                        <label className="text-[#050508] font-black flex items-center gap-1.5 text-xs">
+                          <FileText className="w-4 h-4 text-[#5433eb]" />
+                          <span>Description détaillée (titres, listes, liens, images, tableaux)</span>
+                        </label>
+                        <RichTextEditor
+                          key={productFormData.id || 'new'}
+                          value={productFormData.description || ''}
+                          onChange={(html) => setProductFormData((prev) => ({ ...prev, description: html }))}
+                        />
                       </div>
 
                     </div>

@@ -144,6 +144,10 @@ export const saveOrderToSupabase = async (order: Order): Promise<boolean> => {
 /* enregistrement admin. Tout appareil voit la même boutique.          */
 /* ------------------------------------------------------------------ */
 
+/** Colonnes de la liste catalogue : tout SAUF la description (lourde, chargée à l'ouverture d'une fiche). */
+const LIST_COLUMNS =
+  'id,name,slug,category,category_label,price,old_price,stock,featured,is_new,is_popular,status,image,gallery,catchphrase,key_benefits,box_content,warranty_notice,specs,rating,reviews_count,created_at';
+
 const rowToProduct = (r: any): Product => ({
   id: r.id,
   name: r.name,
@@ -164,6 +168,7 @@ const rowToProduct = (r: any): Product => ({
   boxContent: r.box_content || [],
   warrantyNotice: r.warranty_notice || '',
   description: r.description || '',
+  descriptionLoaded: 'description' in r,
   specs: r.specs || [],
   rating: Number(r.rating) || 5,
   reviewsCount: Number(r.reviews_count) || 1,
@@ -189,7 +194,7 @@ export const fetchProductsFromSupabase = async (): Promise<Product[] | null> => 
   const client = getSupabaseClient();
   if (!client) return null;
   try {
-    const { data, error } = await client.from('products').select('*').order('created_at', { ascending: false });
+    const { data, error } = await client.from('products').select(LIST_COLUMNS).order('created_at', { ascending: false });
     if (error) return null;
     return (data || []).map(rowToProduct);
   } catch {
@@ -290,11 +295,28 @@ export const replaceProductsInSupabase = async (products: Product[]): Promise<Sy
   if (!client) return { ok: false, error: 'Connexion Supabase non configurée.' };
   try {
     if (products.length) {
-      const rows = products.map(productToRow);
-      const { error } = await client.from('products').upsert(rows, { onConflict: 'id' });
-      if (error) {
-        console.error('Product upsert failed:', error);
-        return { ok: false, error: `Enregistrement refusé par la base : ${error.message}` };
+      // Les produits dont la description n'a pas été téléchargée sont envoyés SANS la colonne
+      // description, pour ne jamais écraser le texte existant en base.
+      const full = products.filter((p) => p.descriptionLoaded !== false).map(productToRow);
+      const light = products
+        .filter((p) => p.descriptionLoaded === false)
+        .map((p) => {
+          const { description, ...rest } = productToRow(p);
+          return rest;
+        });
+      for (const rows of [full, light]) {
+        if (!rows.length) continue;
+        const { error } = await client.from('products').upsert(rows, { onConflict: 'id' });
+        if (error) {
+          console.error('Product upsert failed:', error);
+          const friendly =
+            error.code === '23505'
+              ? 'Ce produit existe déjà (identifiant en double).'
+              : error.code === '23502'
+                ? 'Un champ obligatoire est vide.'
+                : error.message;
+          return { ok: false, error: `Enregistrement refusé par la base : ${friendly}` };
+        }
       }
     }
     const { data, error: listError } = await client.from('products').select('id');
@@ -354,7 +376,9 @@ export const fetchProductByIdFromSupabase = async (idOrSlug: string): Promise<Pr
   const client = getSupabaseClient();
   if (!client) return null;
   try {
-    const { data } = await client.from('products').select('*').or(`id.eq.${idOrSlug},slug.eq.${idOrSlug}`).limit(1);
+    const safe = idOrSlug.replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!safe) return null;
+    const { data } = await client.from('products').select('*').or(`id.eq.${safe},slug.eq.${safe}`).limit(1);
     if (data && data.length) return rowToProduct(data[0]);
     return null;
   } catch {
@@ -382,6 +406,19 @@ export const fetchOrderFromSupabase = async (query: string): Promise<Order | nul
       if (byPhone && byPhone.length) return rowToOrder(byPhone[0]);
     }
     return null;
+  } catch {
+    return null;
+  }
+};
+
+/** Télécharge uniquement la description d'un produit (1 requête ciblée, 1 colonne). */
+export const fetchProductDescription = async (id: string): Promise<string | null> => {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  try {
+    const { data, error } = await client.from('products').select('description').eq('id', id).maybeSingle();
+    if (error || !data) return null;
+    return (data as any).description || '';
   } catch {
     return null;
   }

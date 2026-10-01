@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Product, Order, StoreSettings, CartItem, CategoryId } from './types';
 import { 
   getStoredProducts, 
@@ -24,11 +24,21 @@ import { ProductDetailModal } from './components/ProductDetailModal';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { AccountView } from './components/AccountView';
-import { AdminView } from './components/AdminView';
 import { FreeGuideModal } from './components/FreeGuideModal';
 import { MobileGlassDock } from './components/MobileGlassDock';
 import { Footer } from './components/Footer';
-import { TrackingView } from './components/TrackingView';
+// Code-splitting : l'admin (éditeur riche) et le suivi (carte Leaflet) ne sont
+// téléchargés que lorsqu'on les ouvre — la boutique publique reste légère.
+const AdminView = lazy(() => import('./components/AdminView').then((m) => ({ default: m.AdminView })));
+const TrackingView = lazy(() => import('./components/TrackingView').then((m) => ({ default: m.TrackingView })));
+
+const RouteLoader: React.FC<{ label: string }> = ({ label }) => (
+  <div className="py-24 flex flex-col items-center justify-center gap-3 text-slate-500">
+    <div className="w-9 h-9 rounded-full border-4 border-slate-200 border-t-[#5433eb] animate-spin" />
+    <p className="text-xs font-bold">{label}</p>
+  </div>
+);
+
 import {
   saveOrderToSupabase,
   fetchProductsFromSupabase,
@@ -38,6 +48,8 @@ import {
   replaceProductsInSupabase,
   syncOrdersToSupabase,
   SyncResult,
+  fetchProductByIdFromSupabase,
+  fetchProductDescription,
 } from './utils/supabase';
 
 export default function App() {
@@ -75,6 +87,18 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Lien produit direct : on ouvre le produit dès sa propre requête (sans attendre tout le catalogue)
+      const hash = window.location.hash;
+      const direct = hash.includes('product=')
+        ? decodeURIComponent(hash.split('product=')[1].split('&')[0])
+        : hash.startsWith('#/product/') || hash.startsWith('#/produit/')
+          ? decodeURIComponent(hash.replace(/^#\/produ(ct|it)\//, '').split('?')[0])
+          : '';
+      if (direct) {
+        fetchProductByIdFromSupabase(direct).then((p) => {
+          if (!cancelled && p) setSelectedProduct(p);
+        });
+      }
       const [cloudProducts, cloudOrders, cloudSettings] = await Promise.all([
         fetchProductsFromSupabase(),
         fetchOrdersFromSupabase(),
@@ -149,6 +173,19 @@ export default function App() {
     initFacebookPixel(settings.facebookPixelId, settings.facebookPixelEnabled);
     trackPageView(route);
   }, [settings.facebookPixelId, settings.facebookPixelEnabled]);
+
+  // Ouverture d'une fiche : affichage immédiat, puis chargement de la description si absente
+  const openProduct = (p: Product | null) => {
+    setSelectedProduct(p);
+    if (p && p.descriptionLoaded === false) {
+      fetchProductDescription(p.id).then((desc) => {
+        if (desc === null) return;
+        const hydrated = { ...p, description: desc, descriptionLoaded: true };
+        setSelectedProduct((cur) => (cur && cur.id === p.id ? hydrated : cur));
+        setProducts((prev) => prev.map((x) => (x.id === p.id ? hydrated : x)));
+      });
+    }
+  };
 
   // Navigate helper
   const navigate = (newRoute: string) => {
@@ -308,8 +345,10 @@ export default function App() {
 
   useEffect(() => {
     if (linkedProductFound) {
-      setSelectedProduct(linkedProductFound);
+      setSelectedProduct((cur) => (cur && cur.id === linkedProductFound.id && cur.descriptionLoaded !== false ? cur : linkedProductFound));
+      if (linkedProductFound.descriptionLoaded === false) openProduct(linkedProductFound);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedProductId, linkedProductFound?.id, cloudReady]);
 
   return (
@@ -368,7 +407,7 @@ export default function App() {
         {(route.startsWith('#/shop') || (isProductLinkRoute && (linkedProductFound || !cloudReady))) && (
           <CatalogView
             products={products.filter((p) => p.status === 'published')}
-            onSelectProduct={setSelectedProduct}
+            onSelectProduct={openProduct}
             onAddToCart={handleAddToCart}
             wishlist={wishlist}
             onToggleWishlist={handleToggleWishlist}
@@ -392,15 +431,18 @@ export default function App() {
 
         {/* VIEW 3.5: PACKAGE TRACKING PORTAL */}
         {route.startsWith('#/suivi') && (
-          <TrackingView
-            orders={orders}
-            settings={settings}
-            initialOrderId={trackingOrderId}
-          />
+          <Suspense fallback={<RouteLoader label="Chargement du suivi de colis…" />}>
+            <TrackingView
+              orders={orders}
+              settings={settings}
+              initialOrderId={trackingOrderId}
+            />
+          </Suspense>
         )}
 
         {/* VIEW 4: HIDDEN ADMIN DASHBOARD (Accessed only via secret route) */}
         {isAdminRoute && (
+          <Suspense fallback={<RouteLoader label="Ouverture de l'espace de gestion…" />}>
           <AdminView
             products={products}
             orders={orders}
@@ -411,6 +453,7 @@ export default function App() {
             onExitAdmin={() => navigate('#/')}
             onOpenFreeGuide={() => setIsFreeGuideOpen(true)}
           />
+          </Suspense>
         )}
 
         {/* VIEW 5: UNKNOWN ROUTE / DEMO PAGE FALLBACK (ZÉRO PAGE BLANCHE) */}

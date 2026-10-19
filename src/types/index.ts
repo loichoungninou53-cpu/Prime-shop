@@ -18,6 +18,8 @@ export interface Product {
   description: string;
   /** false = description non encore téléchargée (liste allégée). undefined/true = disponible. */
   descriptionLoaded?: boolean;
+  /** false = galerie non encore téléchargée (liste allégée). */
+  galleryLoaded?: boolean;
   // Maketou-style Sales Page structured fields
   catchphrase?: string; // Accroche commerciale percutante
   keyBenefits?: string[]; // 3 à 5 points forts majeurs

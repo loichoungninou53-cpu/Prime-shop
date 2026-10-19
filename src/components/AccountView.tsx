@@ -1,3 +1,4 @@
+import { formatOrderDate } from '../utils/dates';
 import React, { useState } from 'react';
 import { Order, Product, StoreSettings } from '../types';
 import { formatPrice } from '../utils/storage';
@@ -155,7 +156,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
                     </div>
 
                     <div className="text-xs text-slate-500 flex items-center justify-between">
-                      <span>{order.createdAt}</span>
+                      <span>{formatOrderDate(order.createdAt)}</span>
                       <span className="font-black text-[#5433eb] text-sm">
                         {formatPrice(order.total, settings.currency)}
                       </span>
@@ -181,7 +182,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
                       <h3 className="text-2xl font-black text-[#050508]">
                         Commande #{selectedOrder.id}
                       </h3>
-                      <span className="text-xs text-slate-500">Enregistrée le {selectedOrder.createdAt}</span>
+                      <span className="text-xs text-slate-500">Enregistrée le {formatOrderDate(selectedOrder.createdAt)}</span>
                     </div>
                     <div>
                       {getStatusBadge(selectedOrder.status)}

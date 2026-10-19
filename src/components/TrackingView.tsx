@@ -1,3 +1,4 @@
+import { formatOrderDate } from '../utils/dates';
 import React, { useState, useEffect } from 'react';
 import { Order, StoreSettings } from '../types';
 import { formatPrice } from '../utils/storage';
@@ -181,7 +182,7 @@ export const TrackingView: React.FC<TrackingViewProps> = ({ orders, settings, in
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Enregistrée le <strong>{foundOrder.createdAt}</strong> • Expédition par coursier Prime Shop
+                  Enregistrée le <strong>{formatOrderDate(foundOrder.createdAt)}</strong> • Expédition par coursier Prime Shop
                 </p>
               </div>
 

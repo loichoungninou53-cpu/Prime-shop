@@ -11,6 +11,10 @@ import {
   toggleWishlist 
 } from './utils/storage';
 import { initFacebookPixel, trackPageView, trackAddToCart } from './utils/pixel';
+import { orderTime } from './utils/dates';
+
+/** Anciennes commandes de démonstration : ne doivent jamais remonter vers le cloud. */
+const DEMO_ORDER_IDS = new Set(['PS-1024']);
 
 // Components
 import { Header } from './components/Header';
@@ -49,7 +53,7 @@ import {
   syncOrdersToSupabase,
   SyncResult,
   fetchProductByIdFromSupabase,
-  fetchProductDescription,
+  fetchProductDetails,
 } from './utils/supabase';
 
 export default function App() {
@@ -121,8 +125,8 @@ export default function App() {
       if (cloudOrders) {
         const localOrders = getStoredOrders();
         const seen = new Set(cloudOrders.map((o) => o.id));
-        const onlyLocal = localOrders.filter((o) => !seen.has(o.id));
-        const merged = [...cloudOrders, ...onlyLocal].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+        const onlyLocal = localOrders.filter((o) => !seen.has(o.id) && !DEMO_ORDER_IDS.has(o.id));
+        const merged = [...cloudOrders, ...onlyLocal].sort((a, b) => orderTime(b.createdAt) - orderTime(a.createdAt));
         setOrders(merged);
         saveStoredOrders(merged);
         if (onlyLocal.length) syncOrdersToSupabase(merged).catch(() => {});
@@ -170,17 +174,18 @@ export default function App() {
 
   // Initialize Facebook Meta Pixel
   useEffect(() => {
-    initFacebookPixel(settings.facebookPixelId, settings.facebookPixelEnabled);
+    initFacebookPixel(settings.facebookPixelId, !!settings.facebookPixelEnabled && !!settings.facebookPixelId?.trim());
     trackPageView(route);
   }, [settings.facebookPixelId, settings.facebookPixelEnabled]);
 
   // Ouverture d'une fiche : affichage immédiat, puis chargement de la description si absente
   const openProduct = (p: Product | null) => {
     setSelectedProduct(p);
-    if (p && p.descriptionLoaded === false) {
-      fetchProductDescription(p.id).then((desc) => {
-        if (desc === null) return;
-        const hydrated = { ...p, description: desc, descriptionLoaded: true };
+    if (p && (p.descriptionLoaded === false || p.galleryLoaded === false)) {
+      fetchProductDetails(p.id).then((d) => {
+        if (!d) return;
+        const gallery = d.gallery.length ? d.gallery : [p.image];
+        const hydrated: Product = { ...p, description: d.description, descriptionLoaded: true, gallery, galleryLoaded: true };
         setSelectedProduct((cur) => (cur && cur.id === p.id ? hydrated : cur));
         setProducts((prev) => prev.map((x) => (x.id === p.id ? hydrated : x)));
       });
@@ -346,7 +351,7 @@ export default function App() {
   useEffect(() => {
     if (linkedProductFound) {
       setSelectedProduct((cur) => (cur && cur.id === linkedProductFound.id && cur.descriptionLoaded !== false ? cur : linkedProductFound));
-      if (linkedProductFound.descriptionLoaded === false) openProduct(linkedProductFound);
+      if (linkedProductFound.descriptionLoaded === false || linkedProductFound.galleryLoaded === false) openProduct(linkedProductFound);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedProductId, linkedProductFound?.id, cloudReady]);

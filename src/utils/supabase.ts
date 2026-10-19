@@ -77,7 +77,7 @@ const productToRow = (p: Product) => ({
   is_popular: !!p.isPopular,
   status: p.status || 'published',
   image: p.image,
-  gallery: p.gallery || [p.image],
+  gallery: Array.from(new Set([...(p.gallery || [])].filter(Boolean))),
   catchphrase: p.catchphrase || '',
   key_benefits: p.keyBenefits || [],
   box_content: p.boxContent || [],
@@ -146,7 +146,7 @@ export const saveOrderToSupabase = async (order: Order): Promise<boolean> => {
 
 /** Colonnes de la liste catalogue : tout SAUF la description (lourde, chargée à l'ouverture d'une fiche). */
 const LIST_COLUMNS =
-  'id,name,slug,category,category_label,price,old_price,stock,featured,is_new,is_popular,status,image,gallery,catchphrase,key_benefits,box_content,warranty_notice,specs,rating,reviews_count,created_at';
+  'id,name,slug,category,category_label,price,old_price,stock,featured,is_new,is_popular,status,image,catchphrase,key_benefits,box_content,warranty_notice,specs,rating,reviews_count,created_at';
 
 const rowToProduct = (r: any): Product => ({
   id: r.id,
@@ -163,6 +163,7 @@ const rowToProduct = (r: any): Product => ({
   status: r.status || 'published',
   image: r.image,
   gallery: Array.isArray(r.gallery) && r.gallery.length ? r.gallery : [r.image],
+  galleryLoaded: 'gallery' in r,
   catchphrase: r.catchphrase || '',
   keyBenefits: r.key_benefits || [],
   boxContent: r.box_content || [],
@@ -297,11 +298,12 @@ export const replaceProductsInSupabase = async (products: Product[]): Promise<Sy
     if (products.length) {
       // Les produits dont la description n'a pas été téléchargée sont envoyés SANS la colonne
       // description, pour ne jamais écraser le texte existant en base.
-      const full = products.filter((p) => p.descriptionLoaded !== false).map(productToRow);
+      const isLight = (p: Product) => p.descriptionLoaded === false || p.galleryLoaded === false;
+      const full = products.filter((p) => !isLight(p)).map(productToRow);
       const light = products
-        .filter((p) => p.descriptionLoaded === false)
+        .filter(isLight)
         .map((p) => {
-          const { description, ...rest } = productToRow(p);
+          const { description, gallery, ...rest } = productToRow(p);
           return rest;
         });
       for (const rows of [full, light]) {
@@ -413,12 +415,19 @@ export const fetchOrderFromSupabase = async (query: string): Promise<Order | nul
 
 /** Télécharge uniquement la description d'un produit (1 requête ciblée, 1 colonne). */
 export const fetchProductDescription = async (id: string): Promise<string | null> => {
+  const d = await fetchProductDetails(id);
+  return d ? d.description : null;
+};
+
+/** Détails lourds d'un produit (description + galerie) en 1 requête ciblée. */
+export const fetchProductDetails = async (id: string): Promise<{ description: string; gallery: string[] } | null> => {
   const client = getSupabaseClient();
   if (!client) return null;
   try {
-    const { data, error } = await client.from('products').select('description').eq('id', id).maybeSingle();
+    const { data, error } = await client.from('products').select('description,gallery').eq('id', id).maybeSingle();
     if (error || !data) return null;
-    return (data as any).description || '';
+    const r: any = data;
+    return { description: r.description || '', gallery: Array.isArray(r.gallery) ? r.gallery : [] };
   } catch {
     return null;
   }

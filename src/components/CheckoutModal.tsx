@@ -87,13 +87,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       paymentMethod,
       paymentMethodLabel: methodLabels[paymentMethod] || 'Paiement à la livraison',
       status: 'Nouvelle',
-      createdAt: new Date().toLocaleDateString('fr-FR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
+      createdAt: new Date().toISOString(),
       updatedAt: new Date().toLocaleDateString('fr-FR', {
         year: 'numeric',
         month: '2-digit',

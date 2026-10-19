@@ -1,3 +1,4 @@
+import { formatOrderDate, orderTime, dayKey } from '../utils/dates';
 import React, { useState, useEffect, useRef } from 'react';
 import { Product, Order, StoreSettings, PixelEventLog } from '../types';
 import { formatPrice } from '../utils/storage';
@@ -10,7 +11,7 @@ import {
   testSupabaseConnection, 
   syncProductsToSupabase,
   SyncResult,
-  fetchProductDescription
+  fetchProductDetails
 } from '../utils/supabase';
 import { 
   LayoutDashboard, 
@@ -266,6 +267,48 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const totalRevenue = orders
     .filter((o) => o.status !== 'Annulée')
     .reduce((acc, o) => acc + o.total, 0);
+
+  // ---- Statistiques RÉELLES calculées depuis les commandes (aucune valeur fictive) ----
+  const validOrders = orders.filter((o) => o.status !== 'Annulée');
+  const last7 = Array.from({ length: 7 }, (_, k) => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - (6 - k));
+    return d;
+  });
+  const dayLabels = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  const series = last7.map((d, idx) => {
+    const key = dayKey(d);
+    const dayOrders = validOrders.filter((o) => {
+      const t = orderTime(o.createdAt);
+      return t > 0 && dayKey(new Date(t)) === key;
+    });
+    return {
+      label: idx === 6 ? "Auj." : idx === 5 ? 'Hier' : dayLabels[d.getDay()],
+      revenue: dayOrders.reduce((a, o) => a + (Number(o.total) || 0), 0),
+      count: dayOrders.length,
+    };
+  });
+  const weekRevenue = series.reduce((a, s) => a + s.revenue, 0);
+  const weekCount = series.reduce((a, s) => a + s.count, 0);
+  const maxRevenue = Math.max(1, ...series.map((s) => s.revenue));
+  const chartPts = series.map((s, i) => ({ x: 20 + i * (560 / 6), y: 185 - (s.revenue / maxRevenue) * 150, ...s }));
+  const chartLine = chartPts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const chartArea = `${chartLine} L 580 190 L 20 190 Z`;
+  const deliveredCount = orders.filter((o) => o.status === 'Livrée').length;
+  const deliveryRate = validOrders.length ? Math.round((deliveredCount / validOrders.length) * 100) : 0;
+  const cityCounts = validOrders.reduce<Record<string, number>>((acc, o) => {
+    const c = (o.customer?.city || 'Non précisé').split(',')[0].trim();
+    acc[c] = (acc[c] || 0) + 1;
+    return acc;
+  }, {});
+  const topCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+  const paymentCounts = validOrders.reduce<Record<string, number>>((acc, o) => {
+    const k = o.paymentMethodLabel || 'Paiement à la livraison';
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const topPayment = Object.entries(paymentCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
   const totalOrdersCount = orders.length;
   const publishedProductsCount = products.filter((p) => p.status === 'published').length;
   const lowStockCount = products.filter((p) => p.stock <= 5).length;
@@ -308,7 +351,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
-        const MAX = 1080;
+        const MAX = 960;
         const ratio = Math.min(1, MAX / Math.max(img.width, img.height));
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(img.width * ratio);
@@ -323,7 +366,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL('image/jpeg', 0.78));
+        resolve(canvas.toDataURL('image/jpeg', 0.74));
       };
       img.onerror = () => {
         URL.revokeObjectURL(url);
@@ -384,13 +427,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
   // Open modal for edit product
   const handleOpenEditProduct = async (p: Product) => {
     let product = p;
-    if (p.descriptionLoaded === false) {
-      const desc = await fetchProductDescription(p.id);
-      if (desc === null) {
-        showToast('error', 'Impossible de charger la description depuis la base. Vérifiez votre connexion.');
+    if (p.descriptionLoaded === false || p.galleryLoaded === false) {
+      const d = await fetchProductDetails(p.id);
+      if (!d) {
+        showToast('error', 'Impossible de charger la fiche depuis la base. Vérifiez votre connexion.');
         return;
       }
-      product = { ...p, description: desc, descriptionLoaded: true };
+      product = { ...p, description: d.description, descriptionLoaded: true, gallery: d.gallery.length ? d.gallery : [p.image], galleryLoaded: true };
     }
     setProductFormData({ ...product });
     setBenefitsText(p.keyBenefits ? p.keyBenefits.join('\n') : '');
@@ -446,6 +489,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               ...p,
               ...productFormData,
               descriptionLoaded: true,
+              galleryLoaded: true,
               image: defaultImg,
               categoryLabel: catLabels[productFormData.category || 'electronique'],
               keyBenefits: parsedBenefits.length > 0 ? parsedBenefits : p.keyBenefits,
@@ -488,6 +532,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         reviewsCount: 1,
         createdAt: new Date().toISOString(),
         descriptionLoaded: true,
+        galleryLoaded: true,
       };
       nextCatalog = [newProduct, ...products];
     }
@@ -1195,7 +1240,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                           <span className="font-mono font-black text-base text-[#050508]">
                             #{order.id}
                           </span>
-                          <span className="text-slate-400">{order.createdAt}</span>
+                          <span className="text-slate-400">{formatOrderDate(order.createdAt)}</span>
                           <span className="px-2.5 py-0.5 rounded-full bg-purple-50 text-[#5433eb] font-bold border border-purple-200">
                             {order.paymentMethodLabel}
                           </span>
@@ -1317,7 +1362,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     <div><strong>Destinataire :</strong> {printableOrder.customer.fullName}</div>
                     <div><strong>Téléphone :</strong> {printableOrder.customer.phone}</div>
                     <div><strong>Ville / Quartier :</strong> {printableOrder.customer.city}</div>
-                    <div><strong>Date :</strong> {printableOrder.createdAt}</div>
+                    <div><strong>Date :</strong> {formatOrderDate(printableOrder.createdAt)}</div>
                   </div>
 
                   <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
@@ -1474,38 +1519,29 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     <line x1="0" y1="140" x2="600" y2="140" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
                     <line x1="0" y1="190" x2="600" y2="190" stroke="#e2e8f0" strokeWidth="1" />
 
-                    {/* Area under curve */}
-                    <path
-                      d="M 20 160 Q 110 140, 200 110 T 380 70 T 580 40 L 580 190 L 20 190 Z"
-                      fill="url(#curveGradient)"
-                    />
-
-                    {/* Smooth Spline Curve */}
-                    <path
-                      d="M 20 160 Q 110 140, 200 110 T 380 70 T 580 40"
-                      fill="none"
-                      stroke="#5433eb"
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                    />
-
-                    {/* Data Points */}
-                    {[
-                      { x: 20, y: 160, label: 'J-6', val: '25 000 F' },
-                      { x: 110, y: 140, label: 'J-5', val: '45 000 F' },
-                      { x: 200, y: 110, label: 'J-4', val: '50 000 F' },
-                      { x: 290, y: 95, label: 'J-3', val: '75 000 F' },
-                      { x: 380, y: 70, label: 'J-2', val: '120 000 F' },
-                      { x: 480, y: 55, label: 'Hier', val: '145 000 F' },
-                      { x: 580, y: 40, label: 'Aujourd\'hui', val: '185 000 F' },
-                    ].map((pt, i) => (
+                    {/* Aire sous la courbe (données réelles) */}
+                    <path d={chartArea} fill="url(#curveGradient)" />
+                    <path d={chartLine} fill="none" stroke="#5433eb" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                    {chartPts.map((pt, i) => (
                       <g key={i}>
-                        <circle cx={pt.x} cy={pt.y} r="5.5" fill="#ffffff" stroke="#5433eb" strokeWidth="3" />
+                        <circle cx={pt.x} cy={pt.y} r="5.5" fill="#ffffff" stroke="#5433eb" strokeWidth="3">
+                          <title>{`${pt.label} : ${formatPrice(pt.revenue, settings.currency)} • ${pt.count} commande(s)`}</title>
+                        </circle>
+                        {pt.revenue > 0 && (
+                          <text x={pt.x} y={pt.y - 12} textAnchor="middle" fill="#5433eb" fontSize="10" fontWeight="800">
+                            {pt.count}
+                          </text>
+                        )}
                         <text x={pt.x} y="200" textAnchor="middle" fill="#94a3b8" fontSize="11" fontWeight="600">
                           {pt.label}
                         </text>
                       </g>
                     ))}
+                    {weekCount === 0 && (
+                      <text x="300" y="100" textAnchor="middle" fill="#94a3b8" fontSize="13" fontWeight="600">
+                        Aucune commande sur les 7 derniers jours
+                      </text>
+                    )}
                   </svg>
                 </div>
 
@@ -1514,20 +1550,24 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Ventes Semaine</span>
                     <strong className="text-sm font-black text-[#050508]">
-                      {formatPrice(totalRevenue > 0 ? totalRevenue : 185000, settings.currency)}
+                      {formatPrice(weekRevenue, settings.currency)}
+                    </strong>
+                    <span className="text-[10px] text-slate-400">{weekCount} commande(s) • 7 jours</span>
+                    <strong className="hidden">
                     </strong>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Taux de Livraison</span>
-                    <strong className="text-sm font-black text-emerald-600">96.8% sous 24h</strong>
+                    <strong className="text-sm font-black text-emerald-600">{validOrders.length ? `${deliveryRate}% livrées` : '—'}</strong>
+                    <span className="text-[10px] text-slate-400 block">{deliveredCount} livrée(s) / {validOrders.length} valide(s)</span>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Origine Principale</span>
-                    <strong className="text-sm font-black text-[#5433eb]">Cotonou & Calavi</strong>
+                    <strong className="text-sm font-black text-[#5433eb] truncate block">{topCity}</strong>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Mode de Paiement</span>
-                    <strong className="text-sm font-black text-slate-700">Espèces & MoMo</strong>
+                    <strong className="text-sm font-black text-slate-700 truncate block">{topPayment}</strong>
                   </div>
                 </div>
               </div>
